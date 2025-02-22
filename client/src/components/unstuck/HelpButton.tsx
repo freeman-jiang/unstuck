@@ -19,8 +19,7 @@ export function HelpButton() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userQuery:
-            "I want to find all the properties that have a swimming pool.", // Placeholder query
+          userQuery: "How to edit my profile picture?", // Placeholder query
           screenshot,
           domString,
           interactiveElements,

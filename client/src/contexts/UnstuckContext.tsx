@@ -83,81 +83,73 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Process a single node to check if it's interactive
-    const processNode = (node: Element) => {
-      if (isInteractive(node)) {
-        const id = node.id || generateSequentialId(node);
-        if (!node.id) {
-          node.id = id;
-        }
-
-        return {
-          id,
-          label: getElementLabel(node),
-          type: node.tagName.toLowerCase(),
-          boundingBox: node.getBoundingClientRect(),
-        };
-      }
-      return null;
-    };
-
+    // const processNode = (node: Element) => {
+    //   if (isInteractive(node)) {
+    //     const id = node.id || generateSequentialId(node);
+    //     if (!node.id) {
+    //       node.id = id;
+    //     }
+    //     return {
+    //       id,
+    //       label: getElementLabel(node),
+    //       type: node.tagName.toLowerCase(),
+    //       boundingBox: node.getBoundingClientRect(),
+    //     };
+    //   }
+    //   return null;
+    // };
     // Create mutation observer to watch for DOM changes
-    const observer = new MutationObserver(async (mutations) => {
-      const newElements: InteractiveElement[] = [];
-
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const element = node as Element;
-            const interactive = processNode(element);
-            if (interactive) {
-              newElements.push(interactive);
-            }
-
-            // Recursively check all children of added nodes
-            element.querySelectorAll("*").forEach((child) => {
-              const childInteractive = processNode(child);
-              if (childInteractive) {
-                newElements.push(childInteractive);
-              }
-            });
-          }
-        });
-      });
-
-      // Update state with new unique elements
-      if (newElements.length > 0) {
-        setInteractives((prev) => {
-          const uniqueElements = newElements.filter(
-            (newEl) => !prev.some((prevEl) => prevEl.id === newEl.id)
-          );
-          return [...prev, ...uniqueElements];
-        });
-      }
-    });
-
-    // Initial scan of all existing elements in the DOM
-    document.querySelectorAll("*").forEach((element) => {
-      const interactive = processNode(element);
-      if (interactive) {
-        setInteractives((prev) => {
-          if (!prev.some((el) => el.id === interactive.id)) {
-            return [...prev, interactive];
-          }
-          return prev;
-        });
-      }
-    });
-
+    // const observer = new MutationObserver(async (mutations) => {
+    //   const newElements: InteractiveElement[] = [];
+    //   mutations.forEach((mutation) => {
+    //     mutation.addedNodes.forEach((node) => {
+    //       if (node.nodeType === Node.ELEMENT_NODE) {
+    //         const element = node as Element;
+    //         const interactive = processNode(element);
+    //         if (interactive) {
+    //           newElements.push(interactive);
+    //         }
+    //         // Recursively check all children of added nodes
+    //         element.querySelectorAll("*").forEach((child) => {
+    //           const childInteractive = processNode(child);
+    //           if (childInteractive) {
+    //             newElements.push(childInteractive);
+    //           }
+    //         });
+    //       }
+    //     });
+    //   });
+    //   // Update state with new unique elements
+    //   if (newElements.length > 0) {
+    //     setInteractives((prev) => {
+    //       const uniqueElements = newElements.filter(
+    //         (newEl) => !prev.some((prevEl) => prevEl.id === newEl.id)
+    //       );
+    //       return [...prev, ...uniqueElements];
+    //     });
+    //   }
+    // });
+    // // Initial scan of all existing elements in the DOM
+    // document.querySelectorAll("*").forEach((element) => {
+    //   const interactive = processNode(element);
+    //   if (interactive) {
+    //     setInteractives((prev) => {
+    //       if (!prev.some((el) => el.id === interactive.id)) {
+    //         return [...prev, interactive];
+    //       }
+    //       return prev;
+    //     });
+    //   }
+    // });
     // Start observing DOM mutations
-    observer.observe(document.body, {
-      childList: true, // Watch for added/removed nodes
-      subtree: true, // Watch all descendants
-      attributes: true, // Watch for attribute changes
-      attributeFilter: ["role", "aria-label", "placeholder", "onClick"],
-    });
-
+    // observer.observe(document.body, {
+    //   childList: true, // Watch for added/removed nodes
+    //   subtree: true, // Watch all descendants
+    //   attributes: true, // Watch for attribute changes
+    //   attributeFilter: ["role", "aria-label", "placeholder", "onClick"],
+    // });
     // Cleanup: disconnect observer when component unmounts
-    return () => observer.disconnect();
+    // return () => observer.disconnect();
   }, []);
 
   return (
