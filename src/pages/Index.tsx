@@ -1,13 +1,15 @@
-
 import { ListingCard } from "@/components/ListingCard";
 import { FEATURED_LISTINGS, CATEGORIES } from "@/data/mockListings";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Filters } from "@/components/Filters";
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search")?.toLowerCase();
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, Math.max(...FEATURED_LISTINGS.map(l => l.price))]);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   const filteredListings = FEATURED_LISTINGS.filter((listing) => {
     const matchesCategory = selectedCategory ? listing.category === selectedCategory : true;
@@ -16,7 +18,11 @@ const Index = () => {
         listing.location.toLowerCase().includes(searchQuery) ||
         listing.description.toLowerCase().includes(searchQuery)
       : true;
-    return matchesCategory && matchesSearch;
+    const matchesPriceRange = listing.price >= priceRange[0] && listing.price <= priceRange[1];
+    const matchesAmenities = selectedAmenities.length === 0 || 
+      selectedAmenities.every(amenity => listing.amenities.includes(amenity));
+    
+    return matchesCategory && matchesSearch && matchesPriceRange && matchesAmenities;
   });
 
   // Reset category when search query changes
@@ -25,6 +31,11 @@ const Index = () => {
       setSelectedCategory(null);
     }
   }, [searchQuery]);
+
+  const handleFiltersChange = (filters: { priceRange: [number, number]; selectedAmenities: string[] }) => {
+    setPriceRange(filters.priceRange);
+    setSelectedAmenities(filters.selectedAmenities);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -48,32 +59,38 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* Categories and Filters */}
       <section className="container mx-auto py-8">
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-4 py-2 rounded-full whitespace-nowrap ${
-              !selectedCategory
-                ? "bg-primary text-white"
-                : "bg-secondary hover:bg-secondary/80"
-            }`}
-          >
-            All Properties
-          </button>
-          {CATEGORIES.map((category) => (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-4 overflow-x-auto">
             <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                selectedCategory === category
+                !selectedCategory
                   ? "bg-primary text-white"
                   : "bg-secondary hover:bg-secondary/80"
               }`}
             >
-              {category}
+              All Properties
             </button>
-          ))}
+            {CATEGORIES.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full whitespace-nowrap ${
+                  selectedCategory === category
+                    ? "bg-primary text-white"
+                    : "bg-secondary hover:bg-secondary/80"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <Filters
+            onFiltersChange={handleFiltersChange}
+            maxPrice={Math.max(...FEATURED_LISTINGS.map(l => l.price))}
+          />
         </div>
       </section>
 
