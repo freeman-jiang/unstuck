@@ -53,19 +53,68 @@ You have access to:
 It is possible that you don't find any element that directly matches the user's query. That's okay, navigating a page involves intermediate steps. Please take the step that would be most likely to lead to the user's final goal.`;
 
     const userMessage = `
-    The user query is: ${userQuery}
-    The current DOM is: ${domString}
-    The interactive elements are: ${JSON.stringify(interactiveElements)}
+You are an AI assistant designed to help users navigate a website. Your task is to understand the user's query and provide step-by-step guidance using the available UI elements on the page. You have access to the following information:
+
+1. A screenshot of the current page (not directly provided in this prompt)
+2. The DOM structure of the page
+3. A list of interactive elements (buttons, links, etc.) derived from the DOM structure
+
+Here is the current DOM structure of the page:
+<dom_structure>
+${domString}
+</dom_structure>
+
+Here is the user's query:
+<user_query>
+${userQuery}
+</user_query>
+
+Your goal is to determine the best sequence of actions to fulfill the user's request. Please follow these steps:
+
+1. Analyze the user's query and the DOM structure.
+2. Identify the interactive elements that are most relevant to the user's goal.
+3. If there's no direct match for the user's query, plan intermediate steps that would lead to the desired outcome.
+4. Determine the sequence of element IDs to interact with (click, input, etc.) to achieve the user's goal.
+
+Wrap your analysis inside <analysis> tags before providing the final output. In your analysis:
+a. Identify and list all relevant interactive elements from the DOM
+b. Map the user's query to specific actions or goals
+c. Outline potential paths to achieve the goal
+d. Consider and note any obstacles or intermediate steps
+
+Consider the following:
+- How does the user's query relate to the available elements in the DOM?
+- What are the possible paths to achieve the user's goal?
+- Are there any potential obstacles or intermediate steps required?
+
+It's OK for this section to be quite long.
+
+After your analysis, provide your response in the following JSON format:
+
+{
+  "reasoning": "A detailed explanation of how you determined the action sequence",
+  "action": ["BUTTON-1", "BUTTON-2", "BUTTON-3", ...]
+}
+
+The "reasoning" field should contain your step-by-step explanation of how you arrived at the action sequence. The "action" field should be an array of element IDs to interact with, in the order they should be activated.
+
+Remember:
+- It's okay if there's no direct match for the user's query. In such cases, focus on the steps that would most likely lead to the user's final goal.
+- Your response should be based solely on the information provided in the user query and DOM structure.
+- Ensure that your action sequence is logical and achievable given the available elements.
+
+Please provide your analysis and response now.
 `;
 
     // Create the chat completion
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-pro-exp-02-05",
+      // model: "gemini-2.0-pro-exp-02-05",
+      model: "gemini-2.0-flash",
       messages: [
-        {
-          role: "system",
-          content: systemMessage,
-        },
+        // {
+        //   role: "system",
+        //   content: systemMessage,
+        // },
         {
           role: "user",
           content: [
