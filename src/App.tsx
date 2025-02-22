@@ -19,19 +19,23 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CurrencyProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/property/:id" element={<PropertyDetails />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/history" element={<BookingHistory />} />
-            <Route path="/booking/:id" element={<BookingDetails />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <div className="min-h-screen bg-background font-sans antialiased">
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Navbar />
+            <main className="animate-fade-in">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/property/:id" element={<PropertyDetails />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/history" element={<BookingHistory />} />
+                <Route path="/booking/:id" element={<BookingDetails />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </BrowserRouter>
+        </div>
       </CurrencyProvider>
     </TooltipProvider>
   </QueryClientProvider>
