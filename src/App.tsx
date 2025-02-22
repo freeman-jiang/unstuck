@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PropertyDetails from "./pages/PropertyDetails";
 import Settings from "./pages/Settings";
+import BookingHistory from "./pages/BookingHistory";
+import BookingDetails from "./pages/BookingDetails";
 import { Navbar } from "./components/Navbar";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/property/:id" element={<PropertyDetails />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/history" element={<BookingHistory />} />
+            <Route path="/booking/:id" element={<BookingDetails />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
