@@ -2,18 +2,18 @@
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 const Settings = () => {
   const { toast } = useToast();
-  const storedCurrency = localStorage.getItem("currency") || "USD";
+  const { currency, setCurrency } = useCurrency();
 
   const handleCurrencyChange = (value: string) => {
-    localStorage.setItem("currency", value);
+    setCurrency(value as 'USD' | 'CAD');
     toast({
       title: "Currency updated",
       description: `Currency has been changed to ${value}`,
     });
-    window.location.reload();
   };
 
   return (
@@ -24,7 +24,7 @@ const Settings = () => {
         <div className="space-y-4">
           <div>
             <Label htmlFor="currency">Currency</Label>
-            <Select defaultValue={storedCurrency} onValueChange={handleCurrencyChange}>
+            <Select defaultValue={currency} onValueChange={handleCurrencyChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>

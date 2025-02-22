@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { StarIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface ListingCardProps {
   id: number;
@@ -24,9 +25,8 @@ const convertCurrency = (price: number, currency: string) => {
 };
 
 export function ListingCard({ id, title, location, price, rating, image, dates }: ListingCardProps) {
-  const currency = localStorage.getItem("currency") || "USD";
+  const { currency } = useCurrency();
   const convertedPrice = convertCurrency(price, currency);
-  const currencySymbol = currency === "CAD" ? "C$" : "$";
 
   return (
     <Link to={`/property/${id}`}>
@@ -52,7 +52,7 @@ export function ListingCard({ id, title, location, price, rating, image, dates }
             </div>
             <p className="text-sm text-airbnb-accent mt-2">{dates}</p>
             <p className="mt-2">
-              <span className="font-semibold">{currencySymbol}{convertedPrice}</span>
+              <span className="font-semibold">{convertedPrice} {currency}</span>
               <span className="text-airbnb-accent"> night</span>
             </p>
           </div>
