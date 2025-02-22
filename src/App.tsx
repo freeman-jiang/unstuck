@@ -11,6 +11,7 @@ import PropertyDetails from "./pages/PropertyDetails";
 import Settings from "./pages/Settings";
 import BookingHistory from "./pages/BookingHistory";
 import BookingDetails from "./pages/BookingDetails";
+import Support from "./pages/Support";
 import { Navbar } from "./components/Navbar";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/history" element={<BookingHistory />} />
                 <Route path="/booking/:id" element={<BookingDetails />} />
+                <Route path="/help/support" element={<Support />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

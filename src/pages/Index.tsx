@@ -1,8 +1,11 @@
+
 import { ListingCard } from "@/components/ListingCard";
 import { FEATURED_LISTINGS, CATEGORIES } from "@/data/mockListings";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Filters } from "@/components/Filters";
+import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -10,6 +13,7 @@ const Index = () => {
   const searchQuery = searchParams.get("search")?.toLowerCase();
   const [priceRange, setPriceRange] = useState<[number, number]>([0, Math.max(...FEATURED_LISTINGS.map(l => l.price))]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [clickCount, setClickCount] = useState(0);
 
   const filteredListings = FEATURED_LISTINGS.filter((listing) => {
     const matchesCategory = selectedCategory ? listing.category === selectedCategory : true;
@@ -25,7 +29,6 @@ const Index = () => {
     return matchesCategory && matchesSearch && matchesPriceRange && matchesAmenities;
   });
 
-  // Reset category when search query changes
   useEffect(() => {
     if (searchQuery) {
       setSelectedCategory(null);
@@ -35,6 +38,21 @@ const Index = () => {
   const handleFiltersChange = (filters: { priceRange: [number, number]; selectedAmenities: string[] }) => {
     setPriceRange(filters.priceRange);
     setSelectedAmenities(filters.selectedAmenities);
+  };
+
+  const handleInfoClick = () => {
+    setClickCount(prev => {
+      const newCount = prev + 1;
+      // Show support link after 3 clicks
+      if (newCount === 3) {
+        const element = document.getElementById('hidden-support-link');
+        if (element) {
+          element.style.opacity = '1';
+          element.style.pointerEvents = 'auto';
+        }
+      }
+      return newCount;
+    });
   };
 
   return (
@@ -55,6 +73,21 @@ const Index = () => {
             <p className="text-xl animate-fade-up">
               Discover unique stays around the world
             </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mt-4 text-white hover:text-white/80"
+              onClick={handleInfoClick}
+            >
+              <Info className="h-5 w-5" />
+            </Button>
+            <Link
+              to="/help/support"
+              id="hidden-support-link"
+              className="block mt-2 text-sm text-white/80 opacity-0 pointer-events-none transition-opacity duration-500"
+            >
+              Need help?
+            </Link>
           </div>
         </div>
       </section>
