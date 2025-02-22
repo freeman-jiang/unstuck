@@ -1,14 +1,30 @@
 
 import { ListingCard } from "@/components/ListingCard";
 import { FEATURED_LISTINGS, CATEGORIES } from "@/data/mockListings";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search")?.toLowerCase();
 
-  const filteredListings = selectedCategory
-    ? FEATURED_LISTINGS.filter((listing) => listing.category === selectedCategory)
-    : FEATURED_LISTINGS;
+  const filteredListings = FEATURED_LISTINGS.filter((listing) => {
+    const matchesCategory = selectedCategory ? listing.category === selectedCategory : true;
+    const matchesSearch = searchQuery
+      ? listing.title.toLowerCase().includes(searchQuery) ||
+        listing.location.toLowerCase().includes(searchQuery) ||
+        listing.description.toLowerCase().includes(searchQuery)
+      : true;
+    return matchesCategory && matchesSearch;
+  });
+
+  // Reset category when search query changes
+  useEffect(() => {
+    if (searchQuery) {
+      setSelectedCategory(null);
+    }
+  }, [searchQuery]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -64,13 +80,19 @@ const Index = () => {
       {/* Featured Listings */}
       <section className="container mx-auto py-8">
         <h2 className="mb-8 text-3xl font-bold">
-          {selectedCategory || "Featured"} places to stay
+          {searchQuery 
+            ? `Search results for "${searchQuery}"`
+            : `${selectedCategory || "Featured"} places to stay`}
         </h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {filteredListings.map((listing) => (
-            <ListingCard key={listing.id} {...listing} />
-          ))}
-        </div>
+        {filteredListings.length === 0 ? (
+          <p className="text-center text-gray-500">No properties found matching your criteria.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {filteredListings.map((listing) => (
+              <ListingCard key={listing.id} {...listing} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
