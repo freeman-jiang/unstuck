@@ -49,9 +49,14 @@ function getElementLabel(el: Element): string {
   );
 }
 
-// Generate a random unique ID for elements that don't have one
-function generateUniqueId(el: Element): string {
-  return `unstuck-${Math.random().toString(36).substr(2, 9)}`;
+// Generate a sequential ID based on element type
+const counters = new Map<string, number>();
+
+function generateSequentialId(el: Element): string {
+  const type = el.tagName.toUpperCase();
+  const count = (counters.get(type) || 0) + 1;
+  counters.set(type, count);
+  return `${type}-${count}`;
 }
 
 // Provider component that tracks interactive elements
@@ -59,12 +64,14 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   // State to store all interactive elements
   const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
   console.log(interactives);
+  const domString = document.documentElement.outerHTML;
+  console.log("DOM String", domString);
 
   useEffect(() => {
     // Process a single node to check if it's interactive
     const processNode = (node: Element) => {
       if (isInteractive(node)) {
-        const id = node.id || generateUniqueId(node);
+        const id = node.id || generateSequentialId(node);
         if (!node.id) {
           node.id = id;
         }
