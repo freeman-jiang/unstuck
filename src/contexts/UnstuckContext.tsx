@@ -1,4 +1,5 @@
 // Import required React hooks and types
+import { takeScreenshot } from "@/utils/screenshot";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 // Interface defining the structure of an interactive element
@@ -65,7 +66,6 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
   console.log(interactives);
   const domString = document.documentElement.outerHTML;
-  console.log("DOM String", domString);
 
   useEffect(() => {
     // Process a single node to check if it's interactive
@@ -87,7 +87,7 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Create mutation observer to watch for DOM changes
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(async (mutations) => {
       const newElements: InteractiveElement[] = [];
 
       mutations.forEach((mutation) => {
@@ -118,6 +118,10 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
           );
           return [...prev, ...uniqueElements];
         });
+
+        // Take screenshot of screen
+        const screenshot = await takeScreenshot();
+        console.log("Screenshot", screenshot);
       }
     });
 
