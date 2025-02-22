@@ -87,21 +87,20 @@ Consider the following:
 - What are the possible paths to achieve the user's goal?
 - Are there any potential obstacles or intermediate steps required?
 
-It's OK for this section to be quite long.
-
 After your analysis, provide your response in the following JSON format:
 
 {
   "reasoning": "A detailed explanation of how you determined the action sequence",
-  "action": ["BUTTON-1", "BUTTON-2", "BUTTON-3", ...]
+  "actions": ["div-div-a-3", "nav-div-a-1", ...] 
 }
 
-The "reasoning" field should contain your step-by-step explanation of how you arrived at the action sequence. The "action" field should be an array of element IDs to interact with, in the order they should be activated.
+The "reasoning" field should contain your step-by-step explanation of how you arrived at the action sequence. The "actions" field should be an array of 'data-unstuck-id' values from the DOM elements that need to be interacted with, in order.
 
 Remember:
 - It's okay if there's no direct match for the user's query. In such cases, focus on the steps that would most likely lead to the user's final goal.
 - Your response should be based solely on the information provided in the user query and DOM structure.
 - Ensure that your action sequence is logical and achievable given the available elements.
+- ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
 
 Please provide your analysis and response now.
 `;

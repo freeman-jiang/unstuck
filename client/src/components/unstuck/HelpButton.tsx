@@ -9,7 +9,7 @@ export function HelpButton() {
   const handleHelp = async () => {
     console.log("Getting context");
     const { interactiveElements, domString, screenshot } = await getContext();
-    console.log(interactiveElements);
+    console.log(domString);
 
     setIsAnalyzing(true);
     try {
@@ -19,7 +19,7 @@ export function HelpButton() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userQuery: "How to edit my profile picture?", // Placeholder query
+          userQuery: "I want to change the currency to be from USD to CAD", // Placeholder query
           screenshot,
           domString,
           interactiveElements,

@@ -56,20 +56,63 @@ function getElementLabel(el: Element): string {
   );
 }
 
-// Generate a sequential ID based on element type
-const counters = new Map<string, number>();
+let globalCounter = 0;
 
-function generateSequentialId(el: Element): string {
-  const type = el.tagName.toUpperCase();
-  const count = (counters.get(type) || 0) + 1;
-  counters.set(type, count);
-  return `${type}-${count}`;
+function getDescriptiveId(el: Element): string {
+  // Get core identifiers
+  const type = el.tagName.toLowerCase();
+  const role = el.getAttribute("role");
+
+  // Get parent context (e.g., "header-nav-menu-")
+  const parentContext = getParentContext(el);
+
+  // Combine identifiers with monotonic ID
+  globalCounter++;
+  const baseId = [parentContext, type, role, globalCounter]
+    .filter(Boolean) // Remove empty values
+    .join("-");
+
+  return baseId;
+}
+
+// Helper to get parent context
+function getParentContext(el: Element, depth = 2): string {
+  const parents: string[] = [];
+  let current = el.parentElement;
+
+  while (current && parents.length < depth) {
+    const identifier =
+      current.getAttribute("id") ||
+      current.getAttribute("data-testid") ||
+      current.getAttribute("role") ||
+      current.tagName.toLowerCase();
+    if (identifier) parents.unshift(identifier);
+    current = current.parentElement;
+  }
+
+  return parents.join("-");
+}
+
+function processNode(node: Element) {
+  if (isInteractive(node)) {
+    const unstuckId = getDescriptiveId(node);
+    node.setAttribute("data-unstuck-id", unstuckId);
+    return {
+      id: unstuckId,
+      label: getElementLabel(node),
+      type: node.tagName.toLowerCase(),
+      boundingBox: node.getBoundingClientRect(),
+    };
+  }
+  return null;
 }
 
 // Provider component that tracks interactive elements
 export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   // State to store all interactive elements
   const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
+
+  console.log("interactives", interactives);
 
   const getContext = async () => {
     const domString = document.documentElement.outerHTML;
@@ -82,74 +125,18 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Process a single node to check if it's interactive
-    // const processNode = (node: Element) => {
-    //   if (isInteractive(node)) {
-    //     const id = node.id || generateSequentialId(node);
-    //     if (!node.id) {
-    //       node.id = id;
-    //     }
-    //     return {
-    //       id,
-    //       label: getElementLabel(node),
-    //       type: node.tagName.toLowerCase(),
-    //       boundingBox: node.getBoundingClientRect(),
-    //     };
-    //   }
-    //   return null;
-    // };
-    // Create mutation observer to watch for DOM changes
-    // const observer = new MutationObserver(async (mutations) => {
-    //   const newElements: InteractiveElement[] = [];
-    //   mutations.forEach((mutation) => {
-    //     mutation.addedNodes.forEach((node) => {
-    //       if (node.nodeType === Node.ELEMENT_NODE) {
-    //         const element = node as Element;
-    //         const interactive = processNode(element);
-    //         if (interactive) {
-    //           newElements.push(interactive);
-    //         }
-    //         // Recursively check all children of added nodes
-    //         element.querySelectorAll("*").forEach((child) => {
-    //           const childInteractive = processNode(child);
-    //           if (childInteractive) {
-    //             newElements.push(childInteractive);
-    //           }
-    //         });
-    //       }
-    //     });
-    //   });
-    //   // Update state with new unique elements
-    //   if (newElements.length > 0) {
-    //     setInteractives((prev) => {
-    //       const uniqueElements = newElements.filter(
-    //         (newEl) => !prev.some((prevEl) => prevEl.id === newEl.id)
-    //       );
-    //       return [...prev, ...uniqueElements];
-    //     });
-    //   }
-    // });
-    // // Initial scan of all existing elements in the DOM
-    // document.querySelectorAll("*").forEach((element) => {
-    //   const interactive = processNode(element);
-    //   if (interactive) {
-    //     setInteractives((prev) => {
-    //       if (!prev.some((el) => el.id === interactive.id)) {
-    //         return [...prev, interactive];
-    //       }
-    //       return prev;
-    //     });
-    //   }
-    // });
-    // Start observing DOM mutations
-    // observer.observe(document.body, {
-    //   childList: true, // Watch for added/removed nodes
-    //   subtree: true, // Watch all descendants
-    //   attributes: true, // Watch for attribute changes
-    //   attributeFilter: ["role", "aria-label", "placeholder", "onClick"],
-    // });
-    // Cleanup: disconnect observer when component unmounts
-    // return () => observer.disconnect();
+    // Initial scan of all existing elements in the DOM
+    const elements = document.querySelectorAll("*");
+    const interactiveElements: InteractiveElement[] = [];
+
+    elements.forEach((element) => {
+      const interactive = processNode(element);
+      if (interactive) {
+        interactiveElements.push(interactive);
+      }
+    });
+
+    setInteractives(interactiveElements);
   }, []);
 
   return (
