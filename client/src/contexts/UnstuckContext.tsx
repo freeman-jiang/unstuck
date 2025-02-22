@@ -1,4 +1,5 @@
 // Import required React hooks and types
+import { HelpButton } from "@/components/unstuck/HelpButton";
 import { takeScreenshot } from "@/utils/screenshot";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
@@ -13,6 +14,11 @@ interface InteractiveElement {
 // Interface defining the context structure
 interface UnstuckContextType {
   interactives: InteractiveElement[]; // Array of interactive elements
+  getContext: () => Promise<{
+    interactiveElements: InteractiveElement[];
+    domString: string;
+    screenshot: string;
+  }>;
 }
 
 // Create context with undefined default value
@@ -64,8 +70,16 @@ function generateSequentialId(el: Element): string {
 export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   // State to store all interactive elements
   const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
-  console.log(interactives);
-  const domString = document.documentElement.outerHTML;
+
+  const getContext = async () => {
+    const domString = document.documentElement.outerHTML;
+    const screenshot = await takeScreenshot();
+    return {
+      interactiveElements: interactives,
+      domString,
+      screenshot,
+    };
+  };
 
   useEffect(() => {
     // Process a single node to check if it's interactive
@@ -118,10 +132,6 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
           );
           return [...prev, ...uniqueElements];
         });
-
-        // Take screenshot of screen
-        const screenshot = await takeScreenshot();
-        console.log("Screenshot", screenshot);
       }
     });
 
@@ -151,8 +161,9 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UnstuckContext.Provider value={{ interactives }}>
+    <UnstuckContext.Provider value={{ interactives, getContext }}>
       {children}
+      <HelpButton />
     </UnstuckContext.Provider>
   );
 }

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import OpenAI from "openai";
 
 // Define environment bindings type
@@ -7,6 +8,9 @@ type Bindings = {
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// Add CORS middleware
+app.use("/*", cors());
 
 // Initialize OpenAI client in the route handler to access env
 interface InteractiveElement {
@@ -18,7 +22,7 @@ interface InteractiveElement {
 interface AnalyzeRequest {
   userQuery: string;
   screenshot: string;
-  dom: string;
+  domString: string;
   interactiveElements: InteractiveElement[];
 }
 
@@ -28,12 +32,14 @@ app.get("/", (c) => {
 
 // Route to analyze user query with multiple modalities
 app.post("/analyze", async (c) => {
+  console.log("Got request");
   try {
     const openai = new OpenAI({
       apiKey: c.env.GEMINI_API_KEY,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     });
 
-    const { userQuery, screenshot, dom, interactiveElements } =
+    const { userQuery, screenshot, domString, interactiveElements } =
       await c.req.json<AnalyzeRequest>();
 
     // Construct the system message
@@ -44,15 +50,17 @@ You have access to:
 2. The DOM structure
 3. A list of interactive elements (buttons, links, etc.)
 
-Analyze these to provide the most accurate navigation assistance.
+It is possible that you don't find any element that directly matches the user's query. That's okay, navigating a page involves intermediate steps. Please take the step that would be most likely to lead to the user's final goal.`;
 
-The user query is: ${userQuery}
-The DOM is: ${dom}
-The interactive elements are: ${JSON.stringify(interactiveElements)}`;
+    const userMessage = `
+    The user query is: ${userQuery}
+    The current DOM is: ${domString}
+    The interactive elements are: ${JSON.stringify(interactiveElements)}
+`;
 
     // Create the chat completion
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.0-pro-exp-02-05",
       messages: [
         {
           role: "system",
@@ -61,7 +69,7 @@ The interactive elements are: ${JSON.stringify(interactiveElements)}`;
         {
           role: "user",
           content: [
-            { type: "text", text: userQuery },
+            { type: "text", text: userMessage },
             {
               type: "image_url",
               image_url: {
@@ -72,8 +80,8 @@ The interactive elements are: ${JSON.stringify(interactiveElements)}`;
           ],
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      // max_tokens: 500,
+      // temperature: 0.7,
     });
 
     // Extract the assistant's response
