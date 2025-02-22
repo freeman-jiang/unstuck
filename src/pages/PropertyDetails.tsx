@@ -3,6 +3,15 @@ import { useParams } from "react-router-dom";
 import { FEATURED_LISTINGS } from "@/data/mockListings";
 import { StarIcon } from "lucide-react";
 
+const convertCurrency = (price: number, currency: string) => {
+  // Using a simple conversion rate. In a real app, you'd use an API
+  const CAD_RATE = 1.35;
+  if (currency === "CAD") {
+    return Math.round(price * CAD_RATE);
+  }
+  return price;
+};
+
 const PropertyDetails = () => {
   const { id } = useParams();
   const property = FEATURED_LISTINGS.find(
@@ -13,10 +22,13 @@ const PropertyDetails = () => {
     return <div className="container mx-auto py-8">Property not found</div>;
   }
 
+  const currency = localStorage.getItem("currency") || "USD";
+  const convertedPrice = convertCurrency(property.price, currency);
+  const currencySymbol = currency === "CAD" ? "C$" : "$";
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="grid gap-8">
-        {/* Image */}
         <div className="rounded-xl overflow-hidden h-[50vh]">
           <img
             src={property.image}
@@ -25,7 +37,6 @@ const PropertyDetails = () => {
           />
         </div>
 
-        {/* Details */}
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2">
             <h1 className="text-3xl font-bold mb-4">{property.title}</h1>
@@ -49,11 +60,10 @@ const PropertyDetails = () => {
             </div>
           </div>
 
-          {/* Booking Card */}
           <div className="rounded-xl border p-6 h-fit sticky top-8">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <span className="text-2xl font-bold">${property.price}</span>
+                <span className="text-2xl font-bold">{currencySymbol}{convertedPrice}</span>
                 <span className="text-gray-600"> / night</span>
               </div>
               <div className="flex items-center gap-1">

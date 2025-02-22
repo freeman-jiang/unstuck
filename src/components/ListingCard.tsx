@@ -14,7 +14,20 @@ interface ListingCardProps {
   dates: string;
 }
 
+const convertCurrency = (price: number, currency: string) => {
+  // Using a simple conversion rate. In a real app, you'd use an API
+  const CAD_RATE = 1.35;
+  if (currency === "CAD") {
+    return Math.round(price * CAD_RATE);
+  }
+  return price;
+};
+
 export function ListingCard({ id, title, location, price, rating, image, dates }: ListingCardProps) {
+  const currency = localStorage.getItem("currency") || "USD";
+  const convertedPrice = convertCurrency(price, currency);
+  const currencySymbol = currency === "CAD" ? "C$" : "$";
+
   return (
     <Link to={`/property/${id}`}>
       <Card className="group overflow-hidden border-none transition-transform duration-300 hover:-translate-y-1">
@@ -39,7 +52,7 @@ export function ListingCard({ id, title, location, price, rating, image, dates }
             </div>
             <p className="text-sm text-airbnb-accent mt-2">{dates}</p>
             <p className="mt-2">
-              <span className="font-semibold">${price}</span>
+              <span className="font-semibold">{currencySymbol}{convertedPrice}</span>
               <span className="text-airbnb-accent"> night</span>
             </p>
           </div>
