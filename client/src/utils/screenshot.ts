@@ -108,7 +108,13 @@ export const takeScreenshot = async (
     );
     
     // Create blob URL
-    const blobUrl = URL.createObjectURL(blob);
+    // const blobUrl = URL.createObjectURL(blob);
+    // console.log("blobUrl: ", blobUrl);
+    // // open the blob url in a new tab
+    // window.open(blobUrl, '_blank');
+
+    // // clean up the blob url
+    // URL.revokeObjectURL(blobUrl);
 
     // Return data URL for storage/transmission if needed
     return canvas.toDataURL("image/png");

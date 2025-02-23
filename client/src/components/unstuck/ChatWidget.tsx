@@ -2,36 +2,42 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
-import { getDomain, getSitemap } from "@/utils/siteMetadata";
+import { getSitemap } from "@/utils/siteMetadata";
 import { MessageCircle, Phone, X } from "lucide-react";
-import { useState, useCallback } from "react";
-import { Input } from "@/components/ui/input";
+import { useCallback, useState } from "react";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
-  const [input, setInput] = useState('');
-  const { getContext } = useUnstuck();
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string }>
+  >([]);
+  const [input, setInput] = useState("");
+  const { getCurrentContext, setUserQuery } = useUnstuck();
 
   const startCall = useCallback(async () => {
-    console.log("starting call")
+    console.log("starting call");
   }, []);
 
   const handleHelp = async (userQuery: string) => {
-    const sitemap = await getSitemap(); // todo use this in the context 
-    
-    setIsAnalyzing(true);
-    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
+    const sitemap = await getSitemap(); // todo use this in the context
 
-    console.log("starting agent loop")
+    setIsAnalyzing(true);
+    setChatMessages((prev) => [...prev, { role: "user", content: userQuery }]);
+
+    console.log("starting agent loop");
     let taskAccomplished = false;
     let iterations = 0;
+    let previousMessages = [];
     try {
       while (!taskAccomplished) {
-        const { interactiveElements, domString, screenshot } = await getContext();
+        const { domString, screenshot } = await getCurrentContext();
+
+        console.log("Iteration: ", iterations);
+        console.log("previousMessages: ", previousMessages);
 
         const response = await fetch("http://localhost:8787/analyze", {
           method: "POST",
@@ -42,39 +48,52 @@ export function ChatWidget() {
             userQuery,
             screenshot,
             domString,
-            interactiveElements,
+            previousMessages,
           }),
         });
 
         const data = await response.json();
-        console.log("Raw response:", data);
-        const {
-          actions,
-          narration,
-          reasoning,
-          taskAccomplished: isAccomplished,
-        } = parseGemini(data);
 
-        console.log("actions", actions)
-        console.log("narration", narration)
-        console.log("reasoning", reasoning)
-        console.log("taskAccomplished", taskAccomplished)
-        console.log("iterations", iterations)
-        
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: narration || reasoning || "I'll help you with that."
-        }]);
+        const rawGeminiResponse = data.result;
+        const messages = data.messages;
+
+        const parsedGemini = parseGemini(rawGeminiResponse);
+
+        console.log(
+          "parsedGemini: ",
+          parsedGemini.actions,
+          parsedGemini.narration,
+          parsedGemini.reasoning
+        );
+
+        // Ok now do the actions
+
+        previousMessages = messages;
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              parsedGemini.narration ||
+              parsedGemini.reasoning ||
+              "I'll help you with that.",
+          },
+        ]);
 
         iterations++;
-        taskAccomplished = isAccomplished;
+        taskAccomplished = parsedGemini.taskAccomplished;
       }
+      console.log("Finished agent loop: ", taskAccomplished);
     } catch (error) {
       console.error("Error analyzing page:", error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: "I'm sorry, I encountered an error while processing your request."
-      }]);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "I'm sorry, I encountered an error while processing your request.",
+        },
+      ]);
     } finally {
       setIsAnalyzing(false);
     }
@@ -85,34 +104,43 @@ export function ChatWidget() {
     if (!input.trim() || isAnalyzing) return;
 
     const query = input;
-    setInput('');
+    setInput("");
     await handleHelp(query);
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end">
-      <div className={`
+    <div
+      className="fixed bottom-8 right-8 z-50 flex flex-col items-end"
+      id="chat-widget"
+    >
+      <div
+        className={`
         transform transition-all duration-300 ease-out origin-bottom-right w-full
-        ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}
-      `}>
+        ${
+          isOpen
+            ? "scale-100 opacity-100"
+            : "scale-95 opacity-0 pointer-events-none"
+        }
+      `}
+      >
         <Card className="w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden">
           <div className="py-2 px-3 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
               <h3 className="text-sm font-medium">Unstuck AI</h3>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0 hover:bg-purple-50" 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 hover:bg-purple-50"
               onClick={() => setIsOpen(false)}
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
-          
+
           <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
-            {messages.length === 0 && (
+            {chatMessages.length === 0 && (
               <div className="text-center space-y-6">
                 <p className="text-gray-500 text-sm px-8">
                   Tell us what you need and we will guide you through it
@@ -130,20 +158,20 @@ export function ChatWidget() {
                 </div>
               </div>
             )}
-            {messages.map((message, i) => (
+            {chatMessages.map((message, i) => (
               <div
                 key={i}
                 className={`
                   flex transform transition-all duration-300 ease-out
                   animate-in slide-in-from-bottom-4 fade-in
-                  ${message.role === 'user' ? 'justify-end' : 'justify-start'}
+                  ${message.role === "user" ? "justify-end" : "justify-start"}
                 `}
               >
                 <div
                   className={`rounded-2xl px-4 py-2 max-w-[80%] ${
-                    message.role === 'user'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                    message.role === "user"
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-100 text-gray-900"
                   }`}
                 >
                   {message.content}
@@ -168,8 +196,8 @@ export function ChatWidget() {
                 disabled={isAnalyzing}
                 className="flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400"
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isAnalyzing || !input.trim()}
                 className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6"
                 variant="ghost"
@@ -182,10 +210,16 @@ export function ChatWidget() {
         </Card>
       </div>
 
-      <div className={`
+      <div
+        className={`
         transform transition-all duration-200 ease-out absolute bottom-0 right-0
-        ${!isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}
-      `}>
+        ${
+          !isOpen
+            ? "scale-100 opacity-100"
+            : "scale-95 opacity-0 pointer-events-none"
+        }
+      `}
+      >
         <Button
           onClick={() => setIsOpen(true)}
           size="lg"

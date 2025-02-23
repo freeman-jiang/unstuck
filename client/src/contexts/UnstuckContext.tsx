@@ -1,5 +1,7 @@
 import { ChatWidget } from "@/components/unstuck/ChatWidget";
+import { sanitize as sanitizeDom } from "@/lib/sanitize";
 import { takeScreenshot } from "@/utils/screenshot";
+import OpenAI from "openai";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface InteractiveElement {
@@ -11,20 +13,17 @@ interface InteractiveElement {
 
 interface UnstuckContextType {
   interactives: InteractiveElement[];
-  userQuery: string | null;
-  screenshots: string[];
-  reasoningHistory: string[];
-  getContext: () => Promise<{
-    interactiveElements: InteractiveElement[];
+
+  getCurrentContext: () => Promise<{
     domString: string;
     screenshot: string;
-    screenshots: string[];
-    reasoningHistory: string[];
     userQuery: string | null;
   }>;
+  previousMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
   setUserQuery: (query: string) => void;
-  addScreenshot: (screenshot: string) => void;
-  addReasoning: (reasoning: string) => void;
+  setPreviousMessages: (
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  ) => void;
 }
 
 const UnstuckContext = createContext<UnstuckContextType | undefined>(undefined);
@@ -108,22 +107,15 @@ function processNode(node: Element) {
 }
 
 export function UnstuckProvider({ children }: { children: React.ReactNode }) {
-  const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
   const [userQuery, setUserQuery] = useState<string | null>(null);
-  const [screenshots, setScreenshots] = useState<string[]>([]);
-  const [reasoningHistory, setReasoningHistory] = useState<string[]>([]);
+  const [previousMessages, setPreviousMessages] = useState<
+    OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  >([]);
+  const [interactives, setInteractives] = useState<InteractiveElement[]>([]);
+  const getCurrentContext = async () => {
+    const rawDomString = document.documentElement.outerHTML;
+    const sanitizedDomString = sanitizeDom(rawDomString);
 
-  const addScreenshot = (screenshot: string) => {
-    setScreenshots((prev) => [...prev, screenshot]);
-  };
-
-  const addReasoning = (reasoning: string) => {
-    setReasoningHistory((prev) => [...prev, reasoning]);
-  };
-
-  const getContext = async () => {
-    const domString = document.documentElement.outerHTML;
-    
     // Filter out elements that don't have valid bounding boxes
     const validInteractives = interactives.filter(el => 
       el.boundingBox && 
@@ -136,13 +128,12 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
     }));
     
     const screenshot = await takeScreenshot(document.body, validInteractives);
-    
+    console.log("Took screenshot: ");
     return {
       interactiveElements: interactives,
-      domString,
+
+      domString: sanitizedDomString,
       screenshot,
-      screenshots,
-      reasoningHistory,
       userQuery,
     };
   };
@@ -165,13 +156,11 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
     <UnstuckContext.Provider
       value={{
         interactives,
-        userQuery,
-        screenshots,
-        reasoningHistory,
-        getContext,
+
+        getCurrentContext,
         setUserQuery,
-        addScreenshot,
-        addReasoning,
+        setPreviousMessages,
+        previousMessages,
       }}
     >
       {children}

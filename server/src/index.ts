@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { analyzeQuery, type AnalyzeRequest } from "./services/gemini";
+import { processQuery, type AnalyzeRequest } from "./services/gemini";
 
 // Define environment bindings type
 type Bindings = {
@@ -33,7 +33,7 @@ app.get("/", (c) => {
 app.post("/analyze", async (c) => {
   try {
     const request = await c.req.json<AnalyzeRequest>();
-    const response = await analyzeQuery(request, c.env.GEMINI_API_KEY);
+    const response = await processQuery(request, c.env.GEMINI_API_KEY);
     return c.json(response);
   } catch (error) {
     console.error("Error analyzing query:", error);
@@ -45,7 +45,7 @@ app.post("/analyze", async (c) => {
 app.post("/tts", async (c) => {
   try {
     const { text } = await c.req.json<{ text: string }>();
-    
+
     if (!text) {
       return c.json({ error: "Text is required" }, 400);
     }
@@ -70,8 +70,10 @@ app.post("/tts", async (c) => {
     );
 
     if (!response.ok) {
-      const errorData = await response.json() as ElevenLabsError;
-      throw new Error(errorData.message || errorData.detail || "Failed to generate speech");
+      const errorData = (await response.json()) as ElevenLabsError;
+      throw new Error(
+        errorData.message || errorData.detail || "Failed to generate speech"
+      );
     }
 
     // Get the audio data
@@ -84,7 +86,8 @@ app.post("/tts", async (c) => {
     return c.body(audioBuffer);
   } catch (error: unknown) {
     console.error("Error generating speech:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to generate speech";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to generate speech";
     return c.json({ error: errorMessage }, 500);
   }
 });
