@@ -1,4 +1,4 @@
-import { ChatWidget } from "@/components/unstuck/ChatWidget";
+import { ChatWidget } from "@/components/unstuck/chat/ChatWidget";
 import { sanitizeDom } from "@/lib/sanitize";
 import { takeScreenshot } from "@/utils/screenshot";
 import OpenAI from "openai";

@@ -21,6 +21,11 @@ export const MaximizedChat = ({
         <h3 className="text-sm font-medium">Unstuck AI</h3>
       </div>
       <div className="flex items-center gap-1">
+        {isAnalyzing && (
+          <div className="text-xs text-gray-400 animate-pulse mr-2">
+            press <kbd className="px-1 py-0.5 bg-gray-100 rounded">tab</kbd> to continue
+          </div>
+        )}
         <Button
           variant="ghost"
           size="sm"

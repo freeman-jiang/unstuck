@@ -381,6 +381,58 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     }
   };
 
+  // Add click handler function
+  const handleClick = async () => {
+    console.log('Starting handleClick', { isPlaying, currentStep });
+    if (!isPlaying || !currentStep?.elementId) return;
+
+    try {
+      const element = document.querySelector(`[data-unstuck-id="${currentStep.elementId}"]`) as HTMLElement;
+      console.log('Found element to click:', element);
+      if (!element) return;
+
+      // Trigger click animation
+      if (ghostCursorRef.current) {
+        console.log('Starting ghost cursor click animation');
+        await ghostCursorRef.current.click();
+        console.log('Finished ghost cursor click animation');
+      }
+
+      // Simulate the click event
+      console.log('Dispatching click event');
+      const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        // Add these to make the click more "real"
+        detail: 1, // number of clicks
+        screenX: 0, // coordinates
+        screenY: 0,
+        clientX: 0,
+        clientY: 0,
+      });
+      element.dispatchEvent(clickEvent);
+      console.log('Click event dispatched');
+
+      // Also try native click() method as backup
+      element.click();
+      console.log('Native click() called');
+    } catch (error) {
+      console.error('Error during click:', error);
+    }
+  };
+
+  // Expose click handler to parent components
+  useEffect(() => {
+    if (!window._unstuckCleanupFns) {
+      window._unstuckCleanupFns = [];
+    }
+    window._unstuckCleanupFns.push(() => {
+      (window as any)._unstuckHandleClick = undefined;
+    });
+    (window as any)._unstuckHandleClick = handleClick;
+  }, [isPlaying, currentStep]);
+
   useEffect(() => {
     // Setup mutation observer to watch for attribute changes
     const observer = new MutationObserver((mutations) => {
@@ -434,6 +486,23 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       }
     };
 
+    // Add keyboard event listener for tab key
+    const handleKeyDown = async (event: KeyboardEvent) => {
+      console.log('handling keydown')
+      if (event.key === 'Tab' && currentStep?.elementId) {
+        console.log("trying to click", currentStep.elementId)
+        event.preventDefault(); // Prevent default tab behavior
+        
+        const element = document.querySelector(`[data-unstuck-id="${currentStep.elementId}"]`) as HTMLElement;
+        if (element) {
+          console.log("Found element, clicking:", element);
+          element.click();
+        }
+      } else {
+        console.log("Not playing right now.")
+      }
+    };
+
     // Handle page visibility changes
     const handleVisibilityChange = () => {
       if (document.hidden && isPlaying) {
@@ -453,6 +522,9 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       document.addEventListener(eventType, handleEvent, true);
     });
 
+    // Add keyboard event listener
+    document.addEventListener('keydown', handleKeyDown, true);
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleUnload);
     window.addEventListener('unload', handleUnload);
@@ -463,6 +535,7 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       events.forEach(eventType => {
         document.removeEventListener(eventType, handleEvent, true);
       });
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleUnload);
       window.removeEventListener('unload', handleUnload);

@@ -13,6 +13,11 @@ export const MinimizedChat = ({ isWorkflowActive, latestMessage, onMaximize }: M
       <p className="text-sm text-gray-700 flex-1 line-clamp-2">
         {latestMessage || (isWorkflowActive ? "Guiding you through the process..." : "Chat minimized")}
       </p>
+      {isWorkflowActive && (
+        <div className="text-xs text-gray-400 animate-pulse">
+          press <kbd className="px-1 py-0.5 bg-gray-100 rounded">tab</kbd> to continue
+        </div>
+      )}
     </div>
   </Card>
 ); 

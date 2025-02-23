@@ -24,6 +24,7 @@ export class GhostCursor {
   private options: Required<CursorOptions>;
   private debug: boolean;
   private isPulsing = false;
+  private isClicking = false;
 
   constructor(options: CursorOptions = {}) {
     this.debug = options.debug || false;
@@ -75,7 +76,7 @@ export class GhostCursor {
     }
   }
 
-  private drawCursor(position: Position, pulseScale: number = 1, outerPulseScale: number = 1, opacity: number = 1) {
+  private drawCursor(position: Position, pulseScale: number = 1, outerPulseScale: number = 1, opacity: number = 1, clickScale: number = 1) {
     // Clear the previous frame
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -114,14 +115,14 @@ export class GhostCursor {
     this.ctx.fillStyle = gradient;
     this.ctx.fill();
 
-    // Draw cursor center
+    // Draw cursor center with click animation
     this.ctx.beginPath();
-    this.ctx.arc(position.x, position.y, this.options.size / 4, 0, Math.PI * 2);
+    this.ctx.arc(position.x, position.y, (this.options.size / 4) * clickScale, 0, Math.PI * 2);
     this.ctx.fillStyle = this.options.color;
     this.ctx.fill();
 
     if (this.debug) {
-      console.log('Drew cursor at:', position, 'with scales:', { pulseScale, outerPulseScale });
+      console.log('Drew cursor at:', position, 'with scales:', { pulseScale, outerPulseScale, clickScale });
     }
   }
 
@@ -279,5 +280,37 @@ export class GhostCursor {
     if (this.debug) {
       console.log('Cursor destroyed');
     }
+  }
+
+  public async click(): Promise<void> {
+    if (this.isClicking) return;
+    this.isClicking = true;
+    
+    const startTime = performance.now();
+    const clickDuration = 300; // 300ms for click animation
+
+    return new Promise((resolve) => {
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / clickDuration, 1);
+        
+        // Create a "squish" effect
+        const clickScale = progress < 0.5 
+          ? 1 - (progress * 0.3) // Squish down to 70% size
+          : 0.7 + ((progress - 0.5) * 0.6); // Return to normal size
+
+        this.drawCursor(this.currentPosition, 1, 1, 1, clickScale);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          this.isClicking = false;
+          this.drawCursor(this.currentPosition);
+          resolve();
+        }
+      };
+
+      requestAnimationFrame(animate);
+    });
   }
 }
