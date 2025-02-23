@@ -26,7 +26,7 @@ export function ChatWidget() {
     null
   );
   const [isCallActive, setIsCallActive] = useState(false);
-  const { getCurrentContext, setUserQuery } = useUnstuck();
+  const { getCurrentContext, setUserQuery, apiKey } = useUnstuck();
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const successMessages = [
@@ -80,6 +80,7 @@ export function ChatWidget() {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "X-API-Key": apiKey,
               },
               body: JSON.stringify({
                 audio_data: reader.result,
@@ -149,6 +150,7 @@ export function ChatWidget() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-Key": apiKey,
         },
         body: JSON.stringify({ text }),
       });
@@ -247,6 +249,7 @@ export function ChatWidget() {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  "X-API-Key": apiKey,
                 },
                 body: JSON.stringify({
                   audio_data: reader.result,
@@ -327,6 +330,7 @@ export function ChatWidget() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-API-Key": apiKey,
           },
           body: JSON.stringify({
             userQuery,
@@ -345,7 +349,7 @@ export function ChatWidget() {
         const parsedGemini = parseGemini(data.result);
         console.log("parsedGemini: ", parsedGemini);
 
-        if (parsedGemini.taskAccomplished) {
+        if (parsedGemini.taskAccomplished && parsedGemini.actions.length === 0) {
           break;
         }
 

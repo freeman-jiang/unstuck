@@ -29,6 +29,14 @@ export async function processQuery(
   const { userQuery, screenshot, domString, previousMessages, sitemap } =
     request;
 
+
+    // Important: in the case that your user's query doesn't have enough information for you to assist with, or the user's query doesn't have to do with getting around on the website, you should respond to the question in a patient manner, in which you acknowledge their question, try your best to answer, and try to find more information about the issue. Remember, that doesn't mean use this when you get stuck and you can't find the answer. Only if the users query is very vague or doesn't have enough information to assist with, you should respond with a general response. OTHERWISE YOU WILL DIE.
+    // In this case, you should respond with the following JSON format:
+    // {
+    //   "generalResponse": "A general response to the user's question, in which you acknowledge their question, try your best to answer, and try to find more information about the issue."
+    // }
+    
+
   const userMessage = `
 You are an AI assistant designed to help users navigate within this specific website. Your task is to understand the user's query and provide step-by-step guidance using the available UI elements on the page. You have access to the following information:
 
@@ -84,14 +92,9 @@ Remember:
 - Keep the narration friendly, but mainly concise and clear. Keep it to the point and don't ramble!
 - Don't apologize if you can't immediately find the answer it's normal and expected to have intermediate steps.
 - Ensure that your action sequence is logical and achievable given the available elements.
+- only set taskAccomplished to true if you are completely done with the user's query, don't set it on the last step. Set it after you have completed the last step.
 - ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
 - DO NOT SAY I'M SORRY I CAN'T FIND THE ANSWER AND GIVE UP OR YOU WILL DIE. You must thoroughly explore and click around the page to find the answer.
-
-Important: in the case that your user's query doesn't have enough information for you to assist with, or the user's query doesn't have to do with getting around on the website, you should respond to the question in a patient manner, in which you acknowledge their question, try your best to answer, and try to find more information about the issue. Remember, that doesn't mean use this when you get stuck and you can't find the answer. Only if the users query is very vague or doesn't have enough information to assist with, you should respond with a general response. If you really feel there is no path forward, you can ask for clarification. OTHERWISE YOU WILL DIE.
-In this case, you should respond with the following JSON format:
-{
-  "generalResponse": "A general response to the user's question, in which you acknowledge their question, try your best to answer, and try to find more information about the issue."
-}
 
 Please provide your analysis and response now.
 `;

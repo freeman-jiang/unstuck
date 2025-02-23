@@ -20,7 +20,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CurrencyProvider>
-        <UnstuckProvider>
+        <UnstuckProvider apiKey="test-api-key">
           {/* <WorkflowCreator /> */}
           <div className="min-h-screen bg-background font-sans antialiased">
             <Toaster />

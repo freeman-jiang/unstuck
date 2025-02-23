@@ -13,7 +13,7 @@ interface InteractiveElement {
 
 interface UnstuckContextType {
   interactives: InteractiveElement[];
-
+  apiKey: string;
   getCurrentContext: () => Promise<{
     domString: string;
     screenshot: string;
@@ -107,7 +107,13 @@ function processNode(node: Element) {
   return null;
 }
 
-export function UnstuckProvider({ children }: { children: React.ReactNode }) {
+export function UnstuckProvider({ 
+  children,
+  apiKey 
+}: { 
+  children: React.ReactNode;
+  apiKey: string;
+}) {
   const [userQuery, setUserQuery] = useState<string | null>(null);
   const [previousMessages, setPreviousMessages] = useState<
     OpenAI.Chat.Completions.ChatCompletionMessageParam[]
@@ -204,7 +210,7 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
     <UnstuckContext.Provider
       value={{
         interactives,
-
+        apiKey,
         getCurrentContext,
         setUserQuery,
         setPreviousMessages,
