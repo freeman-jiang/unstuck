@@ -13,7 +13,6 @@ import NotFound from "./pages/NotFound";
 import PropertyDetails from "./pages/PropertyDetails";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
-import { WorkflowCreator } from "./components/WorkflowCreator";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -23,7 +22,7 @@ const App = () => (
         <UnstuckProvider
           config={{
             apiKey: "test-api-key",
-            serverUrl: "http://localhost:8787",
+            serverUrl: "https://server.getunstuck.workers.dev",
           }}
         >
           {/* <WorkflowCreator /> */}
