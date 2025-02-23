@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
@@ -11,9 +11,12 @@ export const MaximizedChat = ({
   error,
   loading,
   isVoiceEnabled,
+  isRecording,
   onVoiceToggle,
   onInputChange,
   onSubmit,
+  onStartRecording,
+  onStopRecording,
   onMinimize,
   onClose,
   onStartCall
@@ -129,22 +132,51 @@ export const MaximizedChat = ({
     </div>
 
     <form onSubmit={onSubmit} className="p-4 border-t">
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          placeholder={loading?.isLoading ? "Please wait..." : "Ask for help..."}
-          disabled={loading?.isLoading}
-          className={`flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400 ${
-            error ? 'border-red-300 focus-visible:ring-red-400' : 
-            loading?.isLoading ? 'border-purple-300 bg-purple-50' : ''
-          }`}
-        />
+      <div className="flex gap-2 items-center">
+        <div className="flex-1 relative">
+          <Input
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            placeholder={loading?.isLoading ? "Please wait..." : "Ask for help..."}
+            disabled={loading?.isLoading || isRecording}
+            className={`
+              w-full rounded-full pr-10 border-purple-200 focus-visible:ring-purple-400
+              ${error ? 'border-red-300 focus-visible:ring-red-400' : 
+                loading?.isLoading ? 'border-purple-300 bg-purple-50' :
+                isRecording ? 'border-red-300 bg-red-50' : ''
+              }
+            `}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={`
+              absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0
+              ${isRecording 
+                ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
+                : 'text-purple-500 hover:text-purple-600 hover:bg-purple-50'
+              }
+            `}
+            onClick={isRecording ? onStopRecording : onStartRecording}
+            disabled={loading?.isLoading}
+            title={isRecording ? "Stop recording" : "Start recording"}
+          >
+            {isRecording ? (
+              <div className="relative">
+                <MicOff className="h-3 w-3" />
+                <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              </div>
+            ) : (
+              <Mic className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
         <Button
           type="submit"
-          disabled={loading?.isLoading || !input.trim()}
+          disabled={loading?.isLoading || !input.trim() || isRecording}
           className={`rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6 
-            ${loading?.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            ${(loading?.isLoading || isRecording) ? 'opacity-50 cursor-not-allowed' : ''}`}
           variant="ghost"
           size="sm"
         >

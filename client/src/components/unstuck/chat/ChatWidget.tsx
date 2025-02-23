@@ -20,6 +20,8 @@ export function ChatWidget() {
   const [error, setError] = useState<ErrorState | undefined>();
   const [loading, setLoading] = useState<LoadingState | undefined>();
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const { getCurrentContext, setUserQuery } = useUnstuck();
 
   // Helper to show errors
@@ -75,6 +77,84 @@ export function ChatWidget() {
   const startCall = useCallback(async () => {
     console.log("starting call");
   }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        
+        reader.onloadend = async () => {
+          if (typeof reader.result === 'string') {
+            try {
+              setLoading({
+                isLoading: true,
+                message: "Transcribing audio..."
+              });
+
+              const response = await fetch("http://localhost:8787/asr", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  audio_data: reader.result,
+                  language: "en"
+                }),
+              });
+
+              if (!response.ok) {
+                throw new Error("Failed to transcribe audio");
+              }
+
+              const data = await response.json();
+              // Instead of setting input, immediately handle the transcribed text
+              if (data.text) {
+                await handleHelp(data.text);
+              } else {
+                showError("No transcription received");
+              }
+              setLoading(undefined);
+            } catch (error) {
+              console.error("Error transcribing audio:", error);
+              showError(error instanceof Error ? error.message : "Failed to transcribe audio");
+              setLoading(undefined);
+            }
+          }
+        };
+
+        reader.readAsDataURL(blob);
+        
+        // Clean up the stream
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      showError("Failed to access microphone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
+    }
+  };
 
   const handleHelp = async (userQuery: string) => {
     setError(undefined); // Clear any existing errors
@@ -246,7 +326,10 @@ export function ChatWidget() {
             error={error}
             loading={loading}
             isVoiceEnabled={isVoiceEnabled}
+            isRecording={isRecording}
             onVoiceToggle={() => setIsVoiceEnabled(!isVoiceEnabled)}
+            onStartRecording={startRecording}
+            onStopRecording={stopRecording}
             onInputChange={setInput}
             onSubmit={handleSubmit}
             onMinimize={() => setChatState('minimized')}

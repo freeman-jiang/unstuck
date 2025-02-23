@@ -5,6 +5,7 @@
     "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.2.3",
     "hono": "^4.7.2",
     "openai": "^4.85.4"
   },
