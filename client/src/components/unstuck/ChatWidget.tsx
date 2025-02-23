@@ -53,6 +53,8 @@ export function ChatWidget() {
     } finally {
       setIsAnalyzing(false);
     }
+
+    // todo: return the narration
   };
 
 
