@@ -4,12 +4,13 @@ import { WorkflowCreator } from "@/components/WorkflowCreator";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import * as ReactDOM from "react-dom/client";
 import { MaximizedChat } from "./MaximizedChat";
 import { MinimizedChat } from "./MinimizedChat";
 import { NeedHelpButton } from "./NeedHelpButton";
 import { ChatMessage, ChatState, ErrorState, LoadingState } from "./types";
+import { useMicVAD } from "@ricky0123/vad-react";
 
 export function ChatWidget() {
   const [chatState, setChatState] = useState<ChatState>("closed");
@@ -24,6 +25,7 @@ export function ChatWidget() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
+  const [isCallActive, setIsCallActive] = useState(false);
   const { getCurrentContext, setUserQuery } = useUnstuck();
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -36,6 +38,91 @@ export function ChatWidget() {
     "There we go! Don't hesitate to ask if you need more guidance.",
     "All set! I'm here if you need any other assistance.",
   ];
+
+  // Voice activity detection setup
+  const vad = useMicVAD({
+    onSpeechEnd: async (audio) => {
+      // Convert Float32Array audio samples to WAV format
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      const audioBuffer = audioContext.createBuffer(1, audio.length, 16000);
+      audioBuffer.getChannelData(0).set(audio);
+      
+      // Create MediaRecorder to encode as WebM
+      const mediaStream = audioContext.createMediaStreamDestination();
+      const sourceNode = audioContext.createBufferSource();
+      sourceNode.buffer = audioBuffer;
+      sourceNode.connect(mediaStream);
+      
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(mediaStream.stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      
+      const blob = await new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
+        sourceNode.start();
+        recorder.start();
+        sourceNode.addEventListener('ended', () => recorder.stop());
+      });
+      const reader = new FileReader();
+
+      reader.onloadend = async () => {
+        if (typeof reader.result === "string") {
+          try {
+            setLoading({
+              isLoading: true,
+              message: "Transcribing audio...",
+            });
+
+            const response = await fetch("http://localhost:8787/asr", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                audio_data: reader.result,
+                language: "en",
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to transcribe audio");
+            }
+
+            const data = await response.json();
+            if (data.text) {
+              await handleHelp(data.text);
+            } else {
+              showError("No transcription received");
+            }
+          } catch (error) {
+            console.error("Error transcribing audio:", error);
+            showError(
+              error instanceof Error
+                ? error.message
+                : "Failed to transcribe audio"
+            );
+          } finally {
+            setLoading(undefined);
+          }
+        }
+      };
+
+      reader.readAsDataURL(blob);
+    },
+    onVADMisfire: () => {
+      if (isCallActive) {
+        showError("No speech detected. Try speaking again.");
+      }
+    },
+    startOnLoad: false, // Start paused
+    onSpeechStart: () => {
+      // Optional: Show some feedback that we detected speech starting
+      console.log("Speech detected, listening...");
+    }
+  });
 
   // Helper to show errors
   const showError = (message: string) => {
@@ -96,8 +183,41 @@ export function ChatWidget() {
   };
 
   const startCall = useCallback(async () => {
-    console.log("starting call");
+    try {
+      setIsCallActive(true);
+      setChatState("open");
+      console.log("vad starting")
+      await vad.start();
+    } catch (error) {
+      console.error("Error starting call:", error);
+      showError("Failed to start voice detection");
+      setIsCallActive(false);
+    }
+  }, [vad]);
+
+  // Use a ref to track component mount state
+  const isMounted = useRef(true);
+
+  // Handle cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+      if (isCallActive) {
+        console.log("pausing vad due to unmount");
+        vad.pause();
+        setIsCallActive(false);
+      }
+    };
   }, []);
+
+  // Handle chat state changes separately
+  useEffect(() => {
+    if (isMounted.current && isCallActive && chatState !== "open") {
+      console.log("pausing vad due to chat state change");
+      vad.pause();
+      setIsCallActive(false);
+    }
+  }, [chatState, isCallActive, vad]);
 
   const startRecording = async () => {
     try {
@@ -289,7 +409,6 @@ export function ChatWidget() {
       }
 
       setIsWorkflowActive(false);
-      setChatState("open");
 
       const randomMessage =
         successMessages[Math.floor(Math.random() * successMessages.length)];
@@ -371,6 +490,7 @@ export function ChatWidget() {
             loading={loading}
             isVoiceEnabled={isVoiceEnabled}
             isRecording={isRecording}
+            isCallActive={isCallActive}
             onVoiceToggle={() => setIsVoiceEnabled(!isVoiceEnabled)}
             onStartRecording={startRecording}
             onStopRecording={stopRecording}

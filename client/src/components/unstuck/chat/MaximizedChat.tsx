@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX, Mic } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
@@ -12,6 +12,7 @@ export const MaximizedChat = ({
   loading,
   isVoiceEnabled,
   isRecording,
+  isCallActive,
   onVoiceToggle,
   onInputChange,
   onSubmit,
@@ -21,11 +22,23 @@ export const MaximizedChat = ({
   onClose,
   onStartCall
 }: MaximizedChatProps) => (
-  <Card className={`w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden ${error ? 'border-red-300' : loading?.isLoading ? 'border-purple-300' : ''}`}>
+  <Card className={`w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden ${
+    error ? 'border-red-300' : 
+    isCallActive ? 'border-green-300' :
+    loading?.isLoading ? 'border-purple-300' : ''
+  }`}>
     <div className="py-2 px-3 border-b flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${loading?.isLoading ? 'from-purple-300 to-purple-500 animate-pulse' : 'from-purple-400 to-purple-600'}`} />
-        <h3 className="text-sm font-medium">Unstuck AI</h3>
+        <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${
+          isCallActive 
+            ? 'from-green-300 to-green-500 animate-pulse'
+            : loading?.isLoading 
+              ? 'from-purple-300 to-purple-500 animate-pulse' 
+              : 'from-purple-400 to-purple-600'
+        }`} />
+        <h3 className="text-sm font-medium">
+          {isCallActive ? "Voice Call Active" : "Unstuck AI"}
+        </h3>
       </div>
       <div className="flex items-center gap-1">
         {isAnalyzing && (
@@ -39,6 +52,7 @@ export const MaximizedChat = ({
           className="h-6 w-6 p-0 hover:bg-purple-50"
           onClick={onVoiceToggle}
           title={isVoiceEnabled ? "Disable voice" : "Enable voice"}
+          disabled={isCallActive}
         >
           {isVoiceEnabled ? (
             <Volume2 className="h-3 w-3 text-purple-600" />
@@ -72,6 +86,18 @@ export const MaximizedChat = ({
       </div>
     )}
 
+    {isCallActive && !loading?.isLoading && (
+      <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100 flex items-center gap-3">
+        <div className="relative flex-shrink-0">
+          <div className="absolute -inset-0.5 bg-purple-200 rounded-full animate-ping" />
+          <div className="relative w-3 h-3 bg-purple-500 rounded-full" />
+        </div>
+        <p className="text-sm text-purple-700 font-medium animate-pulse">
+          Listening... Speak your request
+        </p>
+      </div>
+    )}
+
     {loading?.isLoading && (
       <div className="px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
         <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
@@ -93,10 +119,22 @@ export const MaximizedChat = ({
               onClick={onStartCall}
               variant="ghost"
               size="lg"
-              className="rounded-full px-8 py-6 bg-purple-50 hover:bg-purple-100 text-purple-600 font-medium gap-2 transition-colors"
+              className={`
+                rounded-full px-8 py-6 font-medium gap-2 transition-colors
+                ${isCallActive 
+                  ? 'bg-green-50 hover:bg-green-100 text-green-600'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-600'
+                }
+              `}
+              disabled={loading?.isLoading}
             >
-              <Phone className="h-5 w-5" />
-              Start a call instead
+              <div className="relative">
+                <Phone className="h-5 w-5" />
+                {isCallActive && (
+                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                )}
+              </div>
+              {isCallActive ? "Voice call active" : "Start a call instead"}
             </Button>
           </div>
         </div>
@@ -137,13 +175,20 @@ export const MaximizedChat = ({
           <Input
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
-            placeholder={loading?.isLoading ? "Please wait..." : "Ask for help..."}
-            disabled={loading?.isLoading || isRecording}
+            placeholder={
+              isCallActive 
+                ? "Voice call active - speak your request"
+                : loading?.isLoading 
+                  ? "Please wait..." 
+                  : "Ask for help..."
+            }
+            disabled={loading?.isLoading || isRecording || isCallActive}
             className={`
               w-full rounded-full pr-10 border-purple-200 focus-visible:ring-purple-400
               ${error ? 'border-red-300 focus-visible:ring-red-400' : 
                 loading?.isLoading ? 'border-purple-300 bg-purple-50' :
-                isRecording ? 'border-red-300 bg-red-50' : ''
+                isRecording ? 'border-red-300 bg-red-50' :
+                isCallActive ? 'border-green-300 bg-green-50' : ''
               }
             `}
           />
@@ -155,16 +200,18 @@ export const MaximizedChat = ({
               absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0
               ${isRecording 
                 ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
-                : 'text-purple-500 hover:text-purple-600 hover:bg-purple-50'
+                : isCallActive
+                  ? 'text-green-500 hover:text-green-600 hover:bg-green-50'
+                  : 'text-purple-500 hover:text-purple-600 hover:bg-purple-50'
               }
             `}
             onClick={isRecording ? onStopRecording : onStartRecording}
-            disabled={loading?.isLoading}
+            disabled={loading?.isLoading || isCallActive}
             title={isRecording ? "Stop recording" : "Start recording"}
           >
             {isRecording ? (
               <div className="relative">
-                <MicOff className="h-3 w-3" />
+                <Mic className="h-3 w-3" />
                 <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
               </div>
             ) : (
@@ -174,9 +221,9 @@ export const MaximizedChat = ({
         </div>
         <Button
           type="submit"
-          disabled={loading?.isLoading || !input.trim() || isRecording}
+          disabled={loading?.isLoading || !input.trim() || isRecording || isCallActive}
           className={`rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6 
-            ${(loading?.isLoading || isRecording) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            ${(loading?.isLoading || isRecording || isCallActive) ? 'opacity-50 cursor-not-allowed' : ''}`}
           variant="ghost"
           size="sm"
         >
