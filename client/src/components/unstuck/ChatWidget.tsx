@@ -71,6 +71,7 @@ export function ChatWidget() {
         // Ok now do the actions
         if (parsedGemini.actions.length > 0) {
           const firstAction = parsedGemini.actions[0];
+          console.log("firstAction: ", firstAction);
           // Create a promise that resolves when the workflow is complete
           const workflowPromise = new Promise<void>((resolve) => {
             // Create a temporary div to mount the WorkflowCreator
@@ -82,10 +83,14 @@ export function ChatWidget() {
               <WorkflowCreator 
                 elementId={firstAction} 
                 onComplete={() => {
-                  // Cleanup and resolve when complete
-                  root.unmount();
-                  document.body.removeChild(container);
-                  resolve();
+                  // Defer cleanup to next frame to avoid React unmounting warning
+                  requestAnimationFrame(() => {
+                    root.unmount();
+                    if (container.parentNode) {
+                      container.parentNode.removeChild(container);
+                    }
+                    resolve();
+                  });
                 }}
                 autoStart={true}
               />

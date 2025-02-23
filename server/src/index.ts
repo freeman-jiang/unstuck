@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { processQuery, type AnalyzeRequest } from "./services/gemini";
+import handleElevenLabsStream from "./services/11labs";
 
 // Define environment bindings type
 type Bindings = {
@@ -18,15 +19,23 @@ const app = new Hono<{ Bindings: Bindings }>();
 // Add CORS middleware
 app.use("/*", cors());
 
-// Initialize OpenAI client in the route handler to access env
-interface InteractiveElement {
-  id: string;
-  label: string;
-  type: string; // what kind of element
-}
+// WebSocket upgrade handler
+app.get("/ws", async (c) => {
+  const upgradeHeader = c.req.header("Upgrade");
+  
+  if (upgradeHeader !== "websocket") {
+    return c.text("Expected websocket", 400);
+  }
 
-app.get("/", (c) => {
-  return c.text("Hello Hono!");
+  const [client, server] = Object.values(new WebSocketPair());
+  
+  // Initialize the audio session with the server WebSocket
+  await handleElevenLabsStream(server, c.env.ELEVENLABS_API_KEY);
+
+  return new Response(null, {
+    status: 101,
+    webSocket: client,
+  });
 });
 
 // Route to analyze user query with multiple modalities
@@ -51,7 +60,7 @@ app.post("/tts", async (c) => {
     }
 
     const response = await fetch(
-      "https://api.elevenlabs.io/v1/text-to-speech/AI0TkDjXVHNFjPGSgHEZ", // Default voice ID
+      "https://api.elevenlabs.io/v1/text-to-speech/AI0TkDjXVHNFjPGSgHEZ",
       {
         method: "POST",
         headers: {
@@ -76,19 +85,33 @@ app.post("/tts", async (c) => {
       );
     }
 
-    // Get the audio data
     const audioBuffer = await response.arrayBuffer();
-
-    // Set appropriate headers
     c.header("Content-Type", "audio/mpeg");
     c.header("Content-Length", audioBuffer.byteLength.toString());
-
     return c.body(audioBuffer);
   } catch (error: unknown) {
     console.error("Error generating speech:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Failed to generate speech";
     return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Start call endpoint - returns WebSocket connection info
+app.post('/start-call', async (c) => {
+  try {
+    const wsProtocol = c.req.url.startsWith('https') ? 'wss' : 'ws';
+    const wsUrl = `${wsProtocol}://${c.req.header('host')}/ws`;
+
+    console.log('wsUrl', wsUrl);
+    
+    return c.json({ 
+      message: 'Call started',
+      wsUrl
+    }, 200);
+  } catch (error) {
+    console.error('Error starting call:', error);
+    return c.json({ error: 'Failed to start call' }, 500);
   }
 });
 
