@@ -1,5 +1,5 @@
 // Import required React hooks and types
-import { HelpButton } from "@/components/unstuck/HelpButton";
+import { ChatWidget } from "@/components/unstuck/ChatWidget";
 import { takeScreenshot } from "@/utils/screenshot";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
@@ -142,7 +142,7 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
   return (
     <UnstuckContext.Provider value={{ interactives, getContext }}>
       {children}
-      <HelpButton />
+      <ChatWidget />
     </UnstuckContext.Provider>
   );
 }

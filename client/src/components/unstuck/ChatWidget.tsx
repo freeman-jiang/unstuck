@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Mic, PhoneOff } from "lucide-react";
 import { getDescription, getDomain } from '@/utils/siteMetadata';
+import { useUnstuck } from '@/contexts/UnstuckContext';
 
 export function ChatWidget() {
   const [isHovered, setIsHovered] = useState(false);
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { getContext } = useUnstuck();
   
   const conversation = useConversation({
     onConnect: () => console.log('Connected'),
@@ -17,11 +21,36 @@ export function ChatWidget() {
     onError: (error) => console.error('Error:', error),
   });
 
-  const operateBrowser = async (parameters) => {
-    console.log("Operate browser called");
-    console.log(parameters);
-    return "Successfully operated browser";
-  }
+  
+  const handleHelp = async () => {
+    console.log("Getting context");
+    const { interactiveElements, domString, screenshot } = await getContext();
+    console.log(domString);
+
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch("http://localhost:8787/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userQuery: "I want to change the currency to be from USD to CAD", // Placeholder query
+          screenshot,
+          domString,
+          interactiveElements,
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Analysis response:", data);
+    } catch (error) {
+      console.error("Error analyzing page:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
 
   const startConversation = useCallback(async () => {
     try {
@@ -31,7 +60,7 @@ export function ChatWidget() {
       await conversation.startSession({
         agentId: 'AI0TkDjXVHNFjPGSgHEZ',
         clientTools: {
-          operateBrowser: operateBrowser
+          operateBrowser: handleHelp
         },
         dynamicVariables: {
           website_domain: getDomain(),
