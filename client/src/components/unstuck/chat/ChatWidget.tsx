@@ -6,7 +6,7 @@ import { getSitemap } from "@/utils/siteMetadata";
 import { useCallback, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import { WorkflowCreator } from "@/components/WorkflowCreator";
-import { ChatState, ChatMessage, ErrorState } from "./types";
+import { ChatState, ChatMessage, ErrorState, LoadingState } from "./types";
 import { MinimizedChat } from "./MinimizedChat";
 import { MaximizedChat } from "./MaximizedChat";
 import { NeedHelpButton } from "./NeedHelpButton";
@@ -18,6 +18,7 @@ export function ChatWidget() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<ErrorState | undefined>();
+  const [loading, setLoading] = useState<LoadingState | undefined>();
   const { getCurrentContext, setUserQuery } = useUnstuck();
 
   // Helper to show errors
@@ -32,6 +33,11 @@ export function ChatWidget() {
 
   const playTextToSpeech = async (text: string) => {
     try {
+      setLoading({
+        isLoading: true,
+        message: "Generating audio response..."
+      });
+
       const response = await fetch("http://localhost:8787/tts", {
         method: "POST",
         headers: {
@@ -58,12 +64,20 @@ export function ChatWidget() {
       // Clean up the URL after playback
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        setLoading(undefined);
       };
+
+      setLoading({
+        isLoading: true,
+        message: "Playing audio response..."
+      });
 
       await audio.play();
     } catch (error) {
       console.error("Error playing text-to-speech:", error);
       showError("Failed to play audio message");
+    } finally {
+      setLoading(undefined);
     }
   };
 
@@ -83,6 +97,12 @@ export function ChatWidget() {
     let previousMessages = [];
     try {
       while (!taskAccomplished) {
+        setLoading({
+          isLoading: true,
+          message: "Analyzing your request...",
+          progress: iterations === 0 ? 0.2 : iterations / (iterations + 1)
+        });
+
         const { domString, screenshot } = await getCurrentContext();
         console.log("Iteration: ", iterations);
         console.log("previousMessages: ", previousMessages);
@@ -125,6 +145,12 @@ export function ChatWidget() {
           setIsWorkflowActive(true);
           setChatState('minimized');
           
+          setLoading({
+            isLoading: true,
+            message: "Setting up workflow...",
+            progress: 0.8
+          });
+
           const workflowPromise = new Promise<void>((resolve) => {
             const container = document.createElement('div');
             document.body.appendChild(container);
@@ -154,6 +180,16 @@ export function ChatWidget() {
         previousMessages = data.messages;
         iterations++;
         taskAccomplished = parsedGemini.taskAccomplished;
+
+        if (taskAccomplished) {
+          setLoading({
+            isLoading: true,
+            message: "Finalizing...",
+            progress: 1
+          });
+          // Add a small delay to show the completion state
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
       
       setIsWorkflowActive(false);
@@ -165,6 +201,7 @@ export function ChatWidget() {
       setChatState('open');
     } finally {
       setIsAnalyzing(false);
+      setLoading(undefined);
     }
   };
 
@@ -190,6 +227,7 @@ export function ChatWidget() {
           isWorkflowActive={isWorkflowActive}
           latestMessage={chatMessages[chatMessages.length - 1]?.content}
           error={error}
+          loading={loading}
           onMaximize={() => setChatState('open')}
         />
       </div>
@@ -213,6 +251,7 @@ export function ChatWidget() {
             isAnalyzing={isAnalyzing}
             input={input}
             error={error}
+            loading={loading}
             onInputChange={setInput}
             onSubmit={handleSubmit}
             onMinimize={() => setChatState('minimized')}

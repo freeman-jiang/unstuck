@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2, AlertCircle } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle, Loader2 } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
@@ -9,16 +9,17 @@ export const MaximizedChat = ({
   isAnalyzing,
   input,
   error,
+  loading,
   onInputChange,
   onSubmit,
   onMinimize,
   onClose,
   onStartCall
 }: MaximizedChatProps) => (
-  <Card className={`w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden ${error ? 'border-red-300' : ''}`}>
+  <Card className={`w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden ${error ? 'border-red-300' : loading?.isLoading ? 'border-purple-300' : ''}`}>
     <div className="py-2 px-3 border-b flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
+        <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${loading?.isLoading ? 'from-purple-300 to-purple-500 animate-pulse' : 'from-purple-400 to-purple-600'}`} />
         <h3 className="text-sm font-medium">Unstuck AI</h3>
       </div>
       <div className="flex items-center gap-1">
@@ -53,8 +54,18 @@ export const MaximizedChat = ({
       </div>
     )}
 
+    {loading?.isLoading && (
+      <div className="px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
+        <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
+        <p className="text-sm text-purple-600">{loading.message || "Processing your request..."}</p>
+        {loading.progress !== undefined && (
+          <div className="ml-auto text-xs text-purple-500">{Math.round(loading.progress * 100)}%</div>
+        )}
+      </div>
+    )}
+
     <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
-      {messages.length === 0 && (
+      {messages.length === 0 && !loading?.isLoading && (
         <div className="text-center space-y-6">
           <p className="text-gray-500 text-sm px-8">
             Tell us what you need and we will guide you through it
@@ -92,10 +103,11 @@ export const MaximizedChat = ({
           </div>
         </div>
       ))}
-      {isAnalyzing && (
+      {loading?.isLoading && (
         <div className="flex justify-start animate-in slide-in-from-bottom-4 fade-in">
-          <div className="bg-gray-100 rounded-2xl px-4 py-2">
-            Thinking...
+          <div className="bg-purple-50 text-purple-600 rounded-2xl px-4 py-2 flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Thinking...</span>
           </div>
         </div>
       )}
@@ -106,20 +118,26 @@ export const MaximizedChat = ({
         <Input
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
-          placeholder="Ask for help..."
-          disabled={isAnalyzing}
+          placeholder={loading?.isLoading ? "Please wait..." : "Ask for help..."}
+          disabled={loading?.isLoading}
           className={`flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400 ${
-            error ? 'border-red-300 focus-visible:ring-red-400' : ''
+            error ? 'border-red-300 focus-visible:ring-red-400' : 
+            loading?.isLoading ? 'border-purple-300 bg-purple-50' : ''
           }`}
         />
         <Button
           type="submit"
-          disabled={isAnalyzing || !input.trim()}
-          className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6"
+          disabled={loading?.isLoading || !input.trim()}
+          className={`rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6 
+            ${loading?.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           variant="ghost"
           size="sm"
         >
-          Send
+          {loading?.isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            'Send'
+          )}
         </Button>
       </div>
     </form>
