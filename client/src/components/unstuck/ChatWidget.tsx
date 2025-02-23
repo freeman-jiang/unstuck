@@ -37,6 +37,7 @@ export function ChatWidget() {
         const { domString, screenshot } = await getCurrentContext();
 
         console.log("Iteration: ", iterations);
+        console.log("previousMessages: ", previousMessages);
 
         const response = await fetch("http://localhost:8787/analyze", {
           method: "POST",
@@ -64,6 +65,8 @@ export function ChatWidget() {
           parsedGemini.narration,
           parsedGemini.reasoning
         );
+
+        // Ok now do the actions
 
         previousMessages = messages;
         setChatMessages((prev) => [
