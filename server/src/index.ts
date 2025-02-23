@@ -14,6 +14,7 @@ interface ElevenLabsError {
   detail?: string;
 }
 
+const VOICE_ID = "iP95p4xoKVk53GoZ742B"
 const app = new Hono<{ Bindings: Bindings }>();
 
 // Add CORS middleware
@@ -60,10 +61,11 @@ app.post("/tts", async (c) => {
     }
 
     const response = await fetch(
-      "https://api.elevenlabs.io/v1/text-to-speech/AI0TkDjXVHNFjPGSgHEZ",
+      "https://api.elevenlabs.io/v1/text-to-speech/" + VOICE_ID,
       {
         method: "POST",
         headers: {
+          Accept: "audio/mpeg",
           "Content-Type": "application/json",
           "xi-api-key": c.env.ELEVENLABS_API_KEY,
         },
@@ -79,20 +81,27 @@ app.post("/tts", async (c) => {
     );
 
     if (!response.ok) {
-      const errorData = (await response.json()) as ElevenLabsError;
-      throw new Error(
-        errorData.message || errorData.detail || "Failed to generate speech"
-      );
+      const errorData = await response.json();
+      console.error("ElevenLabs API error:", errorData);
+      return c.json({ 
+        error: "Failed to generate speech", 
+        details: errorData 
+      }, response.status as 400 | 401 | 403 | 404 | 429 | 500);
     }
 
     const audioBuffer = await response.arrayBuffer();
+    
+    // Verify we actually got audio data
+    if (!audioBuffer || audioBuffer.byteLength === 0) {
+      return c.json({ error: "No audio data received" }, 500);
+    }
+
     c.header("Content-Type", "audio/mpeg");
     c.header("Content-Length", audioBuffer.byteLength.toString());
     return c.body(audioBuffer);
   } catch (error: unknown) {
-    console.error("Error generating speech:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Failed to generate speech";
+    console.error("Error in TTS endpoint:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return c.json({ error: errorMessage }, 500);
   }
 });

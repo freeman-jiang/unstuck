@@ -115,14 +115,14 @@ export const takeScreenshot = async (
     const filename = `screenshot-${timestamp}.png`;
     console.log('Screenshot ready:', filename);
     
-    // Create and trigger download link
-    const downloadLink = document.createElement('a');
-    downloadLink.href = blobUrl;
-    downloadLink.download = filename;
-    downloadLink.style.display = 'none';
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    // // Create and trigger download link
+    // const downloadLink = document.createElement('a');
+    // downloadLink.href = blobUrl;
+    // downloadLink.download = filename;
+    // downloadLink.style.display = 'none';
+    // document.body.appendChild(downloadLink);
+    // downloadLink.click();
+    // document.body.removeChild(downloadLink);
     
     // Clean up blob URL after 5 minutes
     setTimeout(() => {

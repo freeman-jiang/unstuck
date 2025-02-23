@@ -6,7 +6,7 @@ import { getSitemap } from "@/utils/siteMetadata";
 import { useCallback, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import { WorkflowCreator } from "@/components/WorkflowCreator";
-import { ChatState, ChatMessage } from "./types";
+import { ChatState, ChatMessage, ErrorState } from "./types";
 import { MinimizedChat } from "./MinimizedChat";
 import { MaximizedChat } from "./MaximizedChat";
 import { NeedHelpButton } from "./NeedHelpButton";
@@ -17,14 +17,63 @@ export function ChatWidget() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [error, setError] = useState<ErrorState | undefined>();
   const { getCurrentContext, setUserQuery } = useUnstuck();
+
+  // Helper to show errors
+  const showError = (message: string) => {
+    setError({
+      message,
+      timestamp: Date.now()
+    });
+    // Clear error after 5 seconds
+    setTimeout(() => setError(undefined), 5000);
+  };
+
+  const playTextToSpeech = async (text: string) => {
+    try {
+      const response = await fetch("http://localhost:8787/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("TTS Error:", errorData);
+        showError(errorData.error || "Failed to play audio message");
+        return;
+      }
+
+      const audioBlob = await response.blob();
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error("No audio data received");
+      }
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      // Clean up the URL after playback
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error("Error playing text-to-speech:", error);
+      showError("Failed to play audio message");
+    }
+  };
 
   const startCall = useCallback(async () => {
     console.log("starting call");
   }, []);
 
   const handleHelp = async (userQuery: string) => {
-    const sitemap = await getSitemap(); // todo use this in the context
+    setError(undefined); // Clear any existing errors
+    const sitemap = await getSitemap();
     setIsAnalyzing(true);
     setChatMessages((prev) => [...prev, { role: "user", content: userQuery }]);
 
@@ -51,22 +100,26 @@ export function ChatWidget() {
           }),
         });
 
+        if (!response.ok) {
+          throw new Error("Failed to analyze your request");
+        }
+
         const data = await response.json();
         const parsedGemini = parseGemini(data.result);
 
-
+        const assistantMessage = parsedGemini.narration || parsedGemini.reasoning || "I'll help you with that.";
+        
         setChatMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content:
-              parsedGemini.narration ||
-              parsedGemini.reasoning ||
-              "I'll help you with that.",
+            content: assistantMessage,
           },
         ]);
 
-        
+        // Play text-to-speech for assistant message
+        await playTextToSpeech(assistantMessage);
+
         if (parsedGemini.actions.length > 0) {
           const firstAction = parsedGemini.actions[0];
           setIsWorkflowActive(true);
@@ -94,7 +147,6 @@ export function ChatWidget() {
               />
             );
           });
-          console.log("domString: ", domString);
           
           await workflowPromise;
         }
@@ -104,19 +156,11 @@ export function ChatWidget() {
         taskAccomplished = parsedGemini.taskAccomplished;
       }
       
-      // Only after the entire task is complete
       setIsWorkflowActive(false);
       setChatState('open');
     } catch (error) {
       console.error("Error analyzing page:", error);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "I'm sorry, I encountered an error while processing your request.",
-        },
-      ]);
+      showError(error instanceof Error ? error.message : "An unexpected error occurred");
       setIsWorkflowActive(false);
       setChatState('open');
     } finally {
@@ -145,6 +189,7 @@ export function ChatWidget() {
         <MinimizedChat
           isWorkflowActive={isWorkflowActive}
           latestMessage={chatMessages[chatMessages.length - 1]?.content}
+          error={error}
           onMaximize={() => setChatState('open')}
         />
       </div>
@@ -167,6 +212,7 @@ export function ChatWidget() {
             messages={chatMessages}
             isAnalyzing={isAnalyzing}
             input={input}
+            error={error}
             onInputChange={setInput}
             onSubmit={handleSubmit}
             onMinimize={() => setChatState('minimized')}

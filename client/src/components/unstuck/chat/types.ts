@@ -1,9 +1,15 @@
-export type ChatState = 'closed' | 'minimized' | 'open';
+export type ChatState = 'open' | 'minimized' | 'closed';
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export interface ErrorState {
+  message: string;
+  timestamp: number;
+}
 
 export interface MinimizedChatProps {
   isWorkflowActive: boolean;
   latestMessage?: string;
+  error?: ErrorState;
   onMaximize: () => void;
 }
 
@@ -15,6 +21,7 @@ export interface MaximizedChatProps {
   messages: ChatMessage[];
   isAnalyzing: boolean;
   input: string;
+  error?: ErrorState;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onMinimize: () => void;

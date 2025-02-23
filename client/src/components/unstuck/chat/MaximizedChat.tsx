@@ -1,20 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2 } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
   messages,
   isAnalyzing,
   input,
+  error,
   onInputChange,
   onSubmit,
   onMinimize,
   onClose,
   onStartCall
 }: MaximizedChatProps) => (
-  <Card className="w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden">
+  <Card className={`w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden ${error ? 'border-red-300' : ''}`}>
     <div className="py-2 px-3 border-b flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
@@ -44,6 +45,13 @@ export const MaximizedChat = ({
         </Button>
       </div>
     </div>
+
+    {error && (
+      <div className="px-4 py-2 bg-red-50 border-b border-red-100 flex items-center gap-2">
+        <AlertCircle className="h-4 w-4 text-red-500" />
+        <p className="text-sm text-red-600">{error.message}</p>
+      </div>
+    )}
 
     <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
       {messages.length === 0 && (
@@ -100,7 +108,9 @@ export const MaximizedChat = ({
           onChange={(e) => onInputChange(e.target.value)}
           placeholder="Ask for help..."
           disabled={isAnalyzing}
-          className="flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400"
+          className={`flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400 ${
+            error ? 'border-red-300 focus-visible:ring-red-400' : ''
+          }`}
         />
         <Button
           type="submit"
