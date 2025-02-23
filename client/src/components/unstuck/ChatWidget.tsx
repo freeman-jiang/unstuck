@@ -72,9 +72,14 @@ export function ChatWidget() {
               <WorkflowCreator 
                 elementId={firstAction} 
                 onComplete={() => {
-                  root.unmount();
-                  document.body.removeChild(container);
-                  resolve();
+                  // Defer cleanup to next frame to avoid React unmounting warning
+                  requestAnimationFrame(() => {
+                    root.unmount();
+                    if (container.parentNode) {
+                      container.parentNode.removeChild(container);
+                    }
+                    resolve();
+                  });
                 }}
                 autoStart={true}
               />

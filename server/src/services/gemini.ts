@@ -88,13 +88,13 @@ Please provide your analysis and response now.
       role: "user",
       content: [
         { type: "text", text: userMessage },
-        {
-          type: "image_url",
-          image_url: {
-            url: screenshot,
-            detail: "high",
-          },
-        },
+        // {
+        //   type: "image_url",
+        //   image_url: {
+        //     url: screenshot,
+        //     detail: "high",
+        //   },
+        // },
       ],
     },
   ];
