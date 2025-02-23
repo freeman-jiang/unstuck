@@ -215,12 +215,15 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50" id="chat-widget">
+    <div className="fixed bottom-8 right-8 z-[999] pointer-events-none" id="chat-widget">
       {/* Minimized view */}
       <div
         className={`
           transform transition-all duration-300 ease-out origin-bottom-right absolute bottom-0 right-0
-          ${chatState === 'minimized' ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95 pointer-events-none'}
+          ${chatState === 'minimized' 
+            ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' 
+            : 'translate-y-4 opacity-0 scale-95'
+          }
         `}
       >
         <MinimizedChat
@@ -236,15 +239,21 @@ export function ChatWidget() {
       <div
         className={`
           transform transition-all duration-300 ease-out origin-bottom-right absolute bottom-0 right-0
-          ${chatState !== 'minimized' ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95 pointer-events-none'}
+          ${chatState !== 'minimized' 
+            ? 'translate-y-0 opacity-100 scale-100' 
+            : 'translate-y-4 opacity-0 scale-95'
+          }
         `}
       >
         {/* Expanded chat view */}
         <div
           className={`
-          transform transition-all duration-300 ease-out origin-bottom-right
-          ${chatState === 'open' ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"}
-        `}
+            transform transition-all duration-300 ease-out origin-bottom-right
+            ${chatState === 'open' 
+              ? 'scale-100 opacity-100 pointer-events-auto' 
+              : 'scale-95 opacity-0'
+            }
+          `}
         >
           <MaximizedChat
             messages={chatMessages}
@@ -263,9 +272,12 @@ export function ChatWidget() {
         {/* Need help button */}
         <div
           className={`
-          transform transition-all duration-200 ease-out absolute bottom-0 right-0
-          ${chatState === 'closed' ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"}
-        `}
+            transform transition-all duration-200 ease-out absolute bottom-0 right-0
+            ${chatState === 'closed' 
+              ? 'scale-100 opacity-100 pointer-events-auto' 
+              : 'scale-95 opacity-0'
+            }
+          `}
         >
           <NeedHelpButton onClick={() => setChatState('open')} />
         </div>
