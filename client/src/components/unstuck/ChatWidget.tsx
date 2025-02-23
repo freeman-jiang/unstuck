@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
-import { getDescription, getDomain } from "@/utils/siteMetadata";
+import { getDomain, getSitemap } from "@/utils/siteMetadata";
 import { MessageCircle, Phone, X } from "lucide-react";
 import { useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ export function ChatWidget() {
   }, []);
 
   const handleHelp = async (userQuery: string) => {
+    const sitemap = await getSitemap(); // todo use this in the context 
+    
     setIsAnalyzing(true);
     setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
 
