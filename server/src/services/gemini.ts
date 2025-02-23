@@ -85,6 +85,7 @@ Remember:
 - Don't apologize if you can't immediately find the answer it's normal and expected to have intermediate steps.
 - Ensure that your action sequence is logical and achievable given the available elements.
 - ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
+- DO NOT SAY I'M SORRY I CAN'T FIND THE ANSWER AND GIVE UP OR YOU WILL DIE. You must thoroughly explore and click around the page to find the answer.
 
 Please provide your analysis and response now.
 `;
