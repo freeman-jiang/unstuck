@@ -5,193 +5,169 @@ import { Card } from "@/components/ui/card";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getDescription, getDomain } from "@/utils/siteMetadata";
-import { useConversation } from "@11labs/react";
-import { Mic, PhoneOff } from "lucide-react";
-import { useCallback, useState } from "react";
+import { MessageCircle, X } from "lucide-react";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export function ChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
+  const [input, setInput] = useState('');
   const { getContext } = useUnstuck();
 
-  // Function to convert text to speech and play it
-  const playTextToSpeech = async (text: string) => {
+  const handleHelp = async (userQuery: string) => {
+
+    setIsAnalyzing(true);
+    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
+
+      console.log("starting agent loop")
+     let taskAccomplished = false;
+     let iterations = 0;
     try {
-      const response = await fetch("http://localhost:8787/tts", {
+      
+      while (!taskAccomplished) {
+      const { interactiveElements, domString, screenshot } = await getContext();
+
+      const response = await fetch("http://localhost:8787/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          userQuery,
+          screenshot,
+          domString,
+          interactiveElements,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate speech");
-      }
+      const data = await response.json();
+      console.log("Raw response:", data);
+      const {
+        actions,
+        narration,
+        reasoning,
+        taskAccomplished
+      } = parseGemini(data);
 
-      // Get the audio data as a blob
-      const audioBlob = await response.blob();
+      console.log("actions", actions)
+      console.log("narration", narration)
+      console.log("reasoning", reasoning)
+      console.log("taskAccomplished", taskAccomplished)
+      console.log("iterations", iterations)
+      // Add assistant's response to messages
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: narration || reasoning || "I'll help you with that."
+      }]);
 
-      // Create an audio element and play it
-      const audio = new Audio(URL.createObjectURL(audioBlob));
-      return audio.play();
-    } catch (error) {
-      console.error("Error playing speech:", error);
+      iterations++;
+    
     }
-  };
 
-  const conversation = useConversation({
-    onConnect: () => console.log("Connected"),
-    onDisconnect: () => console.log("Disconnected"),
-    onMessage: (message) => console.log("Message:", message),
-    onError: (error) => console.error("Error:", error),
-  });
-
-  const handleHelp = async ({
-    user_query,
-    website_domain,
-    website_description,
-  }) => {
-    // playTextToSpeech("Alright, let me see how I can help you with that."); // TODO: select from random list of responses
-
-    console.log("Starting agent loop");
-    let taskAccomplished = false;
-
-    setIsAnalyzing(true);
-    try {
-      let iterations = 0;
-      while (!taskAccomplished) {
-        iterations++;
-        const { interactiveElements, domString, screenshot } =
-          await getContext();
-
-        const response = await fetch("http://localhost:8787/analyze", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userQuery: user_query,
-            screenshot,
-            domString,
-            interactiveElements,
-          }),
-        });
-
-        const data = await response.json();
-        console.log("Raw response:", data);
-        const {
-          actions,
-          narration,
-          reasoning,
-          taskAccomplished: isAccomplished,
-        } = parseGemini(data);
-
-        console.log("Actions:", actions);
-        console.log("Narration:", narration);
-        console.log("Reasoning:", reasoning);
-        console.log("Iteration:", iterations);
-
-        taskAccomplished = isAccomplished;
-      }
     } catch (error) {
       console.error("Error analyzing page:", error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "I'm sorry, I encountered an error while processing your request."
+      }]);
     } finally {
       setIsAnalyzing(false);
     }
-
-    // todo: return the narration
   };
 
-  const startConversation = useCallback(async () => {
-    try {
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Start the conversation with your agent
-      await conversation.startSession({
-        agentId: "AI0TkDjXVHNFjPGSgHEZ",
-        clientTools: {
-          operateBrowser: handleHelp,
-        },
-        dynamicVariables: {
-          website_domain: getDomain(),
-          website_description: getDescription(),
-        },
-      });
-    } catch (error) {
-      console.error("Failed to start conversation:", error);
-    }
-  }, [conversation]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isAnalyzing) return;
 
-  const stopConversation = useCallback(async () => {
-    await conversation.endSession();
-  }, [conversation]);
+    const query = input;
+    setInput('');
+    await handleHelp(query);
+  };
 
   return (
     <div className="fixed bottom-8 right-8 z-50">
-      <Card className="p-4 shadow-lg bg-white/95 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div
-            className={`
-              w-12 h-12 relative rounded-full transition-all duration-500
-              bg-gradient-to-br from-blue-400 to-blue-600
-              ${
-                conversation.status === "connected" && !conversation.isSpeaking
-                  ? "shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-2 ring-blue-400"
-                  : "shadow-sm"
-              }
-            `}
-          >
-            <img
-              src="/elevenlabs-icon.svg"
-              alt="ElevenLabs Icon"
-              className="w-12 h-12 rounded-full"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-col">
-              <h3 className="font-semibold">Need help?</h3>
-              {conversation.status === "connected" && (
-                <p className="text-sm text-muted-foreground">
-                  {conversation.isSpeaking
-                    ? "Agent is speaking..."
-                    : "Agent is listening..."}
-                </p>
-              )}
+      {isOpen ? (
+        <Card className="w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden">
+          <div className="py-2 px-3 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
+              <h3 className="text-sm font-medium">Unstuck AI</h3>
             </div>
-            <Button
-              onClick={
-                conversation.status === "connected"
-                  ? stopConversation
-                  : startConversation
-              }
-              variant={
-                conversation.status === "connected" ? "destructive" : "default"
-              }
-              size="sm"
-              className={`
-                gap-2 transition-all duration-200
-                ${
-                  conversation.status === "connected"
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-zinc-900 hover:bg-zinc-800 text-white"
-                }
-              `}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 hover:bg-purple-50" 
+              onClick={() => setIsOpen(false)}
             >
-              {conversation.status === "connected" ? (
-                <>
-                  <PhoneOff className="h-4 w-4" />
-                  End call
-                </>
-              ) : (
-                <>
-                  <Mic className="h-4 w-4" />
-                  Voice chat
-                </>
-              )}
+              <X className="h-3 w-3" />
             </Button>
           </div>
-        </div>
-      </Card>
+          
+          <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
+            {messages.length === 0 && (
+              <div className="text-center py-8 text-gray-500 text-sm px-8">
+                Tell us what you need and we will guide you through it
+              </div>
+            )}
+            {messages.map((message, i) => (
+              <div
+                key={i}
+                className={`flex ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div
+                  className={`rounded-2xl px-4 py-2 max-w-[80%] ${
+                    message.role === 'user'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  {message.content}
+                </div>
+              </div>
+            ))}
+            {isAnalyzing && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 rounded-2xl px-4 py-2">
+                  Thinking...
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-4 border-t">
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask for help..."
+                disabled={isAnalyzing}
+                className="flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400"
+              />
+              <Button 
+                type="submit" 
+                disabled={isAnalyzing || !input.trim()}
+                className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6"
+                variant="ghost"
+                size="sm"
+              >
+                Send
+              </Button>
+            </div>
+          </form>
+        </Card>
+      ) : (
+        <Button
+          onClick={() => setIsOpen(true)}
+          size="lg"
+          className="rounded-full h-12 w-12 p-0 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg"
+        >
+          <MessageCircle className="h-6 w-6 text-white" />
+        </Button>
+      )}
     </div>
   );
 }
