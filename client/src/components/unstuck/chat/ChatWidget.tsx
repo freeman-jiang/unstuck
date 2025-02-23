@@ -1,173 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
-import { MessageCircle, Phone, X, Minimize2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import { WorkflowCreator } from "@/components/WorkflowCreator";
-
-type ChatState = 'closed' | 'minimized' | 'open';
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
-interface MinimizedChatProps {
-  isWorkflowActive: boolean;
-  latestMessage?: string;
-  onMaximize: () => void;
-}
-
-const MinimizedChat = ({ isWorkflowActive, latestMessage, onMaximize }: MinimizedChatProps) => (
-  <Card 
-    onClick={onMaximize}
-    className="w-[300px] shadow-lg bg-white/95 backdrop-blur-sm rounded-2xl overflow-hidden border border-purple-100 hover:border-purple-200 transition-colors cursor-pointer"
-  >
-    <div className="p-3 flex items-center gap-3">
-      <div className="flex-shrink-0">
-        <div className={`w-2 h-2 rounded-full bg-purple-500 ${isWorkflowActive ? 'animate-pulse' : ''}`} />
-      </div>
-      <p className="text-sm text-gray-700 flex-1 line-clamp-2">
-        {latestMessage || (isWorkflowActive ? "Guiding you through the process..." : "Chat minimized")}
-      </p>
-    </div>
-  </Card>
-);
-
-interface NeedHelpButtonProps {
-  onClick: () => void;
-}
-
-const NeedHelpButton = ({ onClick }: NeedHelpButtonProps) => (
-  <Button
-    onClick={onClick}
-    size="lg"
-    className="rounded-full h-12 pl-4 pr-6 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg flex items-center gap-2"
-  >
-    <MessageCircle className="h-5 w-5 text-white" />
-    <span className="text-white font-medium">Need help?</span>
-  </Button>
-);
-
-interface MaximizedChatProps {
-  messages: ChatMessage[];
-  isAnalyzing: boolean;
-  input: string;
-  onInputChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  onMinimize: () => void;
-  onClose: () => void;
-  onStartCall: () => void;
-}
-
-const MaximizedChat = ({
-  messages,
-  isAnalyzing,
-  input,
-  onInputChange,
-  onSubmit,
-  onMinimize,
-  onClose,
-  onStartCall
-}: MaximizedChatProps) => (
-  <Card className="w-[350px] shadow-xl bg-white rounded-2xl overflow-hidden">
-    <div className="py-2 px-3 border-b flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
-        <h3 className="text-sm font-medium">Unstuck AI</h3>
-      </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 hover:bg-purple-50"
-          onClick={onMinimize}
-        >
-          <Minimize2 className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 hover:bg-purple-50"
-          onClick={onClose}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-    </div>
-
-    <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
-      {messages.length === 0 && (
-        <div className="text-center space-y-6">
-          <p className="text-gray-500 text-sm px-8">
-            Tell us what you need and we will guide you through it
-          </p>
-          <div className="flex justify-center">
-            <Button
-              onClick={onStartCall}
-              variant="ghost"
-              size="lg"
-              className="rounded-full px-8 py-6 bg-purple-50 hover:bg-purple-100 text-purple-600 font-medium gap-2 transition-colors"
-            >
-              <Phone className="h-5 w-5" />
-              Start a call instead
-            </Button>
-          </div>
-        </div>
-      )}
-      {messages.map((message, i) => (
-        <div
-          key={i}
-          className={`
-            flex transform transition-all duration-300 ease-out
-            animate-in slide-in-from-bottom-4 fade-in
-            ${message.role === "user" ? "justify-end" : "justify-start"}
-          `}
-        >
-          <div
-            className={`rounded-2xl px-4 py-2 max-w-[80%] ${
-              message.role === "user"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-100 text-gray-900"
-            }`}
-          >
-            {message.content}
-          </div>
-        </div>
-      ))}
-      {isAnalyzing && (
-        <div className="flex justify-start animate-in slide-in-from-bottom-4 fade-in">
-          <div className="bg-gray-100 rounded-2xl px-4 py-2">
-            Thinking...
-          </div>
-        </div>
-      )}
-    </div>
-
-    <form onSubmit={onSubmit} className="p-4 border-t">
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          placeholder="Ask for help..."
-          disabled={isAnalyzing}
-          className="flex-1 rounded-full border-purple-200 focus-visible:ring-purple-400"
-        />
-        <Button
-          type="submit"
-          disabled={isAnalyzing || !input.trim()}
-          className="rounded-full bg-purple-100 hover:bg-purple-200 text-purple-600 font-medium px-6"
-          variant="ghost"
-          size="sm"
-        >
-          Send
-        </Button>
-      </div>
-    </form>
-  </Card>
-);
+import { ChatState, ChatMessage } from "./types";
+import { MinimizedChat } from "./MinimizedChat";
+import { MaximizedChat } from "./MaximizedChat";
+import { NeedHelpButton } from "./NeedHelpButton";
 
 export function ChatWidget() {
   const [chatState, setChatState] = useState<ChatState>('closed');
@@ -343,4 +185,4 @@ export function ChatWidget() {
       </div>
     </div>
   );
-}
+} 
