@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX, Mic } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle, Volume2, VolumeX, Mic } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
@@ -29,23 +29,10 @@ export const MaximizedChat = ({
   }`}>
     <div className="py-2 px-3 border-b flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${
-          isCallActive 
-            ? 'from-green-300 to-green-500 animate-pulse'
-            : loading?.isLoading 
-              ? 'from-purple-300 to-purple-500 animate-pulse' 
-              : 'from-purple-400 to-purple-600'
-        }`} />
-        <h3 className="text-sm font-medium">
-          {isCallActive ? "Voice Call Active" : "Unstuck AI"}
-        </h3>
+        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
+        <h3 className="text-sm font-medium">Unstuck AI</h3>
       </div>
       <div className="flex items-center gap-1">
-        {isAnalyzing && (
-          <div className="text-xs text-gray-400 animate-pulse mr-2">
-            press <kbd className="px-1 py-0.5 bg-gray-100 rounded">tab</kbd> to continue
-          </div>
-        )}
         <Button
           variant="ghost"
           size="sm"
@@ -86,57 +73,38 @@ export const MaximizedChat = ({
       </div>
     )}
 
-    {isCallActive && !loading?.isLoading && (
-      <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100 flex items-center gap-3">
-        <div className="relative flex-shrink-0">
-          <div className="absolute -inset-0.5 bg-purple-200 rounded-full animate-ping" />
-          <div className="relative w-3 h-3 bg-purple-500 rounded-full" />
-        </div>
-        <p className="text-sm text-purple-700 font-medium animate-pulse">
-          Listening... Speak your request
-        </p>
-      </div>
-    )}
-
-    {loading?.isLoading && (
-      <div className="px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
-        <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
-        <p className="text-sm text-purple-600">{loading.message || "Processing your request..."}</p>
-        {loading.progress !== undefined && (
-          <div className="ml-auto text-xs text-purple-500">{Math.round(loading.progress * 100)}%</div>
-        )}
-      </div>
-    )}
-
     <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
-      {messages.length === 0 && !loading?.isLoading && (
+      {(messages.length === 0 || isCallActive) && !loading?.isLoading && (
         <div className="text-center space-y-6">
-          <p className="text-gray-500 text-sm px-8">
-            Tell us what you need and we will guide you through it
-          </p>
-          <div className="flex justify-center">
-            <Button
-              onClick={onStartCall}
-              variant="ghost"
-              size="lg"
-              className={`
-                rounded-full px-8 py-6 font-medium gap-2 transition-colors
-                ${isCallActive 
-                  ? 'bg-green-50 hover:bg-green-100 text-green-600'
-                  : 'bg-purple-50 hover:bg-purple-100 text-purple-600'
-                }
-              `}
-              disabled={loading?.isLoading}
-            >
+          {isCallActive ? (
+            <div className="flex flex-col items-center gap-3">
               <div className="relative">
-                <Phone className="h-5 w-5" />
-                {isCallActive && (
-                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                )}
+                <div className="absolute -inset-1 bg-purple-200 rounded-full animate-ping opacity-75" />
+                <div className="relative w-4 h-4 bg-purple-500 rounded-full" />
               </div>
-              {isCallActive ? "Voice call active" : "Start a call instead"}
-            </Button>
-          </div>
+              <p className="text-purple-700 font-medium">
+                Listening... Speak your request
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-gray-500 text-sm px-8">
+                Tell us what you need and we will guide you through it
+              </p>
+              <div className="flex justify-center">
+                <Button
+                  onClick={onStartCall}
+                  variant="ghost"
+                  size="lg"
+                  className="rounded-full px-8 py-6 font-medium gap-2 transition-colors bg-purple-50 hover:bg-purple-100 text-purple-600"
+                  disabled={loading?.isLoading}
+                >
+                  <Phone className="h-5 w-5" />
+                  Start a call instead
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
       {messages.map((message, i) => (
@@ -161,9 +129,10 @@ export const MaximizedChat = ({
       ))}
       {loading?.isLoading && (
         <div className="flex justify-start animate-in slide-in-from-bottom-4 fade-in">
-          <div className="bg-purple-50 text-purple-600 rounded-2xl px-4 py-2 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Thinking...</span>
+          <div className="flex items-center gap-1 text-purple-600">
+            <span className="animate-bounce">•</span>
+            <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>•</span>
+            <span className="animate-bounce" style={{ animationDelay: "0.4s" }}>•</span>
           </div>
         </div>
       )}
@@ -227,11 +196,7 @@ export const MaximizedChat = ({
           variant="ghost"
           size="sm"
         >
-          {loading?.isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            'Send'
-          )}
+          Send
         </Button>
       </div>
     </form>
