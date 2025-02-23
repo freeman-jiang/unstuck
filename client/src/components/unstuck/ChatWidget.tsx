@@ -9,10 +9,34 @@ import { getDescription, getDomain } from '@/utils/siteMetadata';
 import { useUnstuck } from '@/contexts/UnstuckContext';
 
 export function ChatWidget() {
-  const [isHovered, setIsHovered] = useState(false);
-
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { getContext } = useUnstuck();
+  
+  // Function to convert text to speech and play it
+  const playTextToSpeech = async (text: string) => {
+    try {
+      const response = await fetch('http://localhost:8787/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate speech');
+      }
+
+      // Get the audio data as a blob
+      const audioBlob = await response.blob();
+      
+      // Create an audio element and play it
+      const audio = new Audio(URL.createObjectURL(audioBlob));
+      return audio.play();
+    } catch (error) {
+      console.error('Error playing speech:', error);
+    }
+  };
   
   const conversation = useConversation({
     onConnect: () => console.log('Connected'),
@@ -27,6 +51,8 @@ export function ChatWidget() {
     website_domain,
     website_description
   }) => {
+    playTextToSpeech("Alright, let me see how I can help you with that."); // TODO: select from random list of responses
+
     console.log("Getting context");
     const { interactiveElements, domString, screenshot } = await getContext();
     console.log(domString);
@@ -56,7 +82,6 @@ export function ChatWidget() {
 
     // todo: return the narration
   };
-
 
   const startConversation = useCallback(async () => {
     try {
