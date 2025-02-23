@@ -603,6 +603,12 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
         ) as HTMLElement;
         if (element) {
           console.log("Found element, clicking:", element);
+          element.dispatchEvent(
+            new PointerEvent("pointerdown", { bubbles: true })
+          );
+          element.dispatchEvent(
+            new PointerEvent("pointerup", { bubbles: true })
+          );
           element.click();
         }
       } else {
