@@ -12,14 +12,8 @@ interface BoundingBox {
 
 interface WorkflowStep {
   elementId: string;
-  // instruction: string;
-  // label: string;
   boundingBox: BoundingBox | null;
   waitForInteraction?: boolean;
-  // instructionOffset?: {
-  //   x?: number;
-  //   y?: number;
-  // };
 }
 
 interface SelectionState {
@@ -30,23 +24,21 @@ interface SelectionState {
 }
 
 interface WorkflowCreatorProps {
-  elementIds?: string[];
-  // instructions?: Record<string, string>;
+  elementId: string;
   onComplete?: () => void;
+  autoStart?: boolean;
 }
 
 export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({ 
-  elementIds = ['div-div-button-6'], 
-  // instructions = {"help button": "Click the help button"}, 
-  onComplete 
+  elementId, 
+  onComplete,
+  autoStart = false
 }) => {
   const ghostCursorRef = useRef<GhostCursor | null>(null);
   const highlightRef = useRef<BoundingBoxHighlight | null>(null);
   const selectionStatesRef = useRef<Map<string, SelectionState>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
-  const { interactives } = useUnstuck();
+  const [currentStep, setCurrentStep] = useState<WorkflowStep | null>(null);
 
   const updateSelectionState = (element: Element) => {
     const id = element.getAttribute('data-unstuck-id');
@@ -67,76 +59,43 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     }
   };
 
-  // const isElementSelected = (elementId: string): boolean => {
-  //   const state = selectionStatesRef.current.get(elementId);
-  //   if (!state) return false;
-
-  //   return state.selected || state.expanded;
-  // };
-
-  const validateInteractiveElement = (elementId: string): { boundingBox: BoundingBox | null; /* label: string */ } => {
-    // Query all elements with data-unstuck-id attribute
+  const validateInteractiveElement = (elementId: string): { boundingBox: BoundingBox | null } => {
     const elements = document.querySelectorAll(`[data-unstuck-id="${elementId}"]`);
     if (!elements || elements.length === 0) {
       console.warn(`No element found with data-unstuck-id: ${elementId}`);
-      return { boundingBox: null /*, label: '' */ };
+      return { boundingBox: null };
     }
 
-    // Get the first matching element
     const element = elements[0];
     const boundingBox = element.getBoundingClientRect();
-    // const label = element.getAttribute('aria-label') || 
-    //              element.getAttribute('title') || 
-    //              element.textContent?.trim() || 
-    //              'Unknown';
+    console.log('Found element:', { elementId, boundingBox });
 
-    console.log('Found element:', { elementId, boundingBox /*, label */ });
-
-    return {
-      boundingBox,
-      // label
-    };
+    return { boundingBox };
   };
 
-  const getWorkflowSteps = (): WorkflowStep[] => {
-    return elementIds.map((elementId) => {
-      const { boundingBox /*, label */ } = validateInteractiveElement(elementId);
-      return {
-        elementId,
-        // instruction: instructions[elementId] || `Click the ${label}`,
-        // label,
-        boundingBox,
-        waitForInteraction: true,
-        // instructionOffset: { y: -60 },
-      };
-    });
+  const getWorkflowStep = (): WorkflowStep | null => {
+    const { boundingBox } = validateInteractiveElement(elementId);
+    
+    return {
+      elementId,
+      boundingBox,
+      waitForInteraction: true,
+    };
   };
 
   const executeWorkflow = async () => {
     if (isPlaying) return;
     console.log('Starting workflow...');
     
-    // Initialize workflow steps
-    const steps = getWorkflowSteps();
-    if (steps.length === 0) {
-      console.error('No valid workflow steps found');
+    // Initialize workflow step
+    const step = getWorkflowStep();
+    if (!step || !step.boundingBox) {
+      console.error('No valid workflow step found');
       return;
     }
 
-    setWorkflowSteps(steps);
+    setCurrentStep(step);
     setIsPlaying(true);
-    setCurrentStepIndex(0);
-    
-    const currentStep = steps[0];
-    if (!currentStep?.boundingBox) {
-      const { boundingBox } = validateInteractiveElement(currentStep.elementId);
-      if (!boundingBox) {
-        console.error('Could not find element position');
-        cleanup();
-        return;
-      }
-      currentStep.boundingBox = boundingBox;
-    }
 
     // Initialize ghost cursor
     ghostCursorRef.current = new GhostCursor({
@@ -165,42 +124,28 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Move cursor to target
-    const targetX = currentStep.boundingBox.x + currentStep.boundingBox.width / 2;
-    const targetY = currentStep.boundingBox.y + currentStep.boundingBox.height / 2;
+    const targetX = step.boundingBox.x + step.boundingBox.width / 2;
+    const targetY = step.boundingBox.y + step.boundingBox.height / 2;
     await ghostCursorRef.current.moveTo(targetX, targetY);
 
     // Add delay before showing the highlight box
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Show highlight box with instruction
-    highlightRef.current.show(
-      currentStep.boundingBox,
-      // currentStep.instruction
-      '' // Empty string instead of instruction
-    );
+    // Show highlight box
+    highlightRef.current.show(step.boundingBox, '');
   };
 
   const handleElementInteraction = async (elementId: string) => {
-    if (!isPlaying || !ghostCursorRef.current || !highlightRef.current || currentStepIndex >= workflowSteps.length) {
-      console.log('Interaction ignored:', { isPlaying, currentStepIndex, elementId });
+    if (!isPlaying || !ghostCursorRef.current || !highlightRef.current || !currentStep) {
+      console.log('Interaction ignored:', { isPlaying, elementId });
       return;
     }
-
-    const currentStep = workflowSteps[currentStepIndex];
-    console.log('Processing interaction:', { elementId, currentStep });
 
     if (currentStep.elementId === elementId) {
       // Wait a short moment to ensure any state changes have propagated
       await new Promise((resolve) => setTimeout(resolve, 100));
       
-      // if (!isElementSelected(elementId)) {
-      //   console.log('Element interaction did not result in selection:', elementId);
-      //   return;
-      // }
-
-      // console.log('Element selected, cleaning up visual elements');
-      
-      // First hide the highlight box and label
+      // Hide the highlight box
       highlightRef.current.hide();
       
       // Short delay before hiding cursor for visual feedback
@@ -212,57 +157,12 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       // Wait for animations to complete
       await new Promise((resolve) => setTimeout(resolve, 300));
       
-      console.log('Completing step:', currentStepIndex);
-      
-      // Move to next step
-      const nextStepIndex = currentStepIndex + 1;
-      setCurrentStepIndex(nextStepIndex);
-      
       // Clear the selection state for this element
       selectionStatesRef.current.delete(elementId);
       
-      // If there's a next step, execute it after a small delay
-      if (nextStepIndex < workflowSteps.length) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        
-        const nextStep = workflowSteps[nextStepIndex];
-        if (!nextStep.boundingBox) {
-          const element = interactives.find((el) => el.id === nextStep.elementId);
-          if (!element?.boundingBox) {
-            console.error('Could not find element position for next step');
-            cleanup();
-            return;
-          }
-          // Update the workflow step with the new bounding box
-          const updatedSteps = [...workflowSteps];
-          updatedSteps[nextStepIndex] = {
-            ...nextStep,
-            boundingBox: element.boundingBox
-          };
-          setWorkflowSteps(updatedSteps);
-          nextStep.boundingBox = element.boundingBox;
-        }
-
-        // Show cursor again
-        ghostCursorRef.current.show();
-        
-        // Move to next target
-        const targetX = nextStep.boundingBox.x + nextStep.boundingBox.width / 2;
-        const targetY = nextStep.boundingBox.y + nextStep.boundingBox.height / 2;
-        await ghostCursorRef.current.moveTo(targetX, targetY);
-
-        // Show highlight box with instruction
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        highlightRef.current.show(
-          nextStep.boundingBox,
-          // nextStep.instruction
-          '' // Empty string instead of instruction
-        );
-      } else {
-        // Workflow complete
-        cleanup();
-        onComplete?.();
-      }
+      // Workflow complete
+      cleanup();
+      onComplete?.();
     }
   };
 
@@ -277,8 +177,7 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       highlightRef.current = null;
     }
     setIsPlaying(false);
-    setCurrentStepIndex(0);
-    setWorkflowSteps([]);
+    setCurrentStep(null);
   };
 
   useEffect(() => {
@@ -325,30 +224,37 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
   }, [isPlaying]);
 
   useEffect(() => {
+    if (autoStart) {
+      executeWorkflow();
+    }
     return cleanup;
-  }, []);
+  }, [autoStart]);
 
-  return (
-    <button
-      onClick={executeWorkflow}
-      disabled={isPlaying || elementIds.length === 0}
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        padding: '12px 24px',
-        borderRadius: '6px',
-        border: 'none',
-        background: isPlaying || elementIds.length === 0 ? '#ccc' : '#4B4BFF',
-        color: 'white',
-        cursor: isPlaying || elementIds.length === 0 ? 'default' : 'pointer',
-        fontSize: '14px',
-        fontWeight: 500,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-        zIndex: 1000,
-      }}
-    >
-      {isPlaying ? `Step ${currentStepIndex + 1}/${workflowSteps.length}` : elementIds.length === 0 ? 'No Steps' : 'Start Demo'}
-    </button>
-  );
+  if (!autoStart) {
+    return (
+      <button
+        onClick={executeWorkflow}
+        disabled={isPlaying}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          padding: '12px 24px',
+          borderRadius: '6px',
+          border: 'none',
+          background: isPlaying ? '#ccc' : '#4B4BFF',
+          color: 'white',
+          cursor: isPlaying ? 'default' : 'pointer',
+          fontSize: '14px',
+          fontWeight: 500,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          zIndex: 1000,
+        }}
+      >
+        {isPlaying ? 'Running Demo' : 'Start Demo'}
+      </button>
+    );
+  }
+  
+  return null;
 };

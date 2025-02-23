@@ -8,6 +8,8 @@ import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
 import { MessageCircle, Phone, X } from "lucide-react";
 import { useCallback, useState } from "react";
+import * as ReactDOM from "react-dom/client";
+import { WorkflowCreator } from "@/components/WorkflowCreator";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +69,33 @@ export function ChatWidget() {
         );
 
         // Ok now do the actions
+        if (parsedGemini.actions.length > 0) {
+          const firstAction = parsedGemini.actions[0];
+          // Create a promise that resolves when the workflow is complete
+          const workflowPromise = new Promise<void>((resolve) => {
+            // Create a temporary div to mount the WorkflowCreator
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+            
+            const root = ReactDOM.createRoot(container);
+            root.render(
+              <WorkflowCreator 
+                elementId={firstAction} 
+                onComplete={() => {
+                  // Cleanup and resolve when complete
+                  root.unmount();
+                  document.body.removeChild(container);
+                  resolve();
+                }}
+                autoStart={true}
+              />
+            );
+          });
+          console.log("domString: ", domString);
+          
+          // Wait for the workflow to complete
+          await workflowPromise;
+        }
 
         previousMessages = messages;
         setChatMessages((prev) => [
