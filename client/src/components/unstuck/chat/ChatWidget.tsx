@@ -316,6 +316,7 @@ export function ChatWidget() {
     let taskAccomplished = false;
     let iterations = 0;
     let previousMessages = [];
+    let isGeneralResponse = false;
     try {
       while (!taskAccomplished) {
         const { domString, screenshot } = await getCurrentContext();
@@ -342,12 +343,14 @@ export function ChatWidget() {
 
         const data = await response.json();
         const parsedGemini = parseGemini(data.result);
+        console.log("parsedGemini: ", parsedGemini);
 
         if (parsedGemini.taskAccomplished) {
           break;
         }
 
         const assistantMessage =
+          parsedGemini.generalResponse ||
           parsedGemini.narration ||
           parsedGemini.reasoning ||
           "I'll help you with that.";
@@ -366,7 +369,12 @@ export function ChatWidget() {
         // Play text-to-speech for assistant message
         await playTextToSpeech(assistantMessage);
 
-        if (parsedGemini.actions.length > 0) {
+        if (parsedGemini.generalResponse) {
+          isGeneralResponse = true;
+          break;
+        }
+
+        if (parsedGemini.actions && parsedGemini.actions.length > 0) {
           const firstAction = parsedGemini.actions[0];
           setIsWorkflowActive(true);
           setChatState("minimized");
@@ -414,7 +422,9 @@ export function ChatWidget() {
 
       const randomMessage =
         successMessages[Math.floor(Math.random() * successMessages.length)];
-      await playTextToSpeech(randomMessage);
+      if (!isGeneralResponse) {
+        await playTextToSpeech(randomMessage);
+      }
     } catch (error) {
       console.error("Error analyzing page:", error);
       showError(

@@ -87,6 +87,12 @@ Remember:
 - ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
 - DO NOT SAY I'M SORRY I CAN'T FIND THE ANSWER AND GIVE UP OR YOU WILL DIE. You must thoroughly explore and click around the page to find the answer.
 
+Important: in the case that your user's query doesn't have enough information for you to assist with, or the user's query doesn't have to do with getting around on the website, you should respond to the question in a patient manner, in which you acknowledge their question, try your best to answer, and try to find more information about the issue.
+In this case, you should respond with the following JSON format:
+{
+  "generalResponse": "A general response to the user's question, in which you acknowledge their question, try your best to answer, and try to find more information about the issue."
+}
+
 Please provide your analysis and response now.
 `;
 

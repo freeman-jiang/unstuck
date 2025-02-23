@@ -25,6 +25,12 @@ const parseJsonContent = (jsonStr: string) => {
   const cleanJson = jsonStr.replace(/```json\s*([\s\S]*?)\s*```/g, "$1");
   const json = JSON.parse(cleanJson);
 
+  if (json.generalResponse) {
+    return {
+      generalResponse: json.generalResponse,
+    };
+  }
+
   return {
     reasoning: json.reasoning,
     actions: json.actions,
