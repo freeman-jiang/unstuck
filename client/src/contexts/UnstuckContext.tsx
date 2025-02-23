@@ -1,5 +1,5 @@
 import { ChatWidget } from "@/components/unstuck/ChatWidget";
-import { sanitize as sanitizeDom } from "@/lib/sanitize";
+import { sanitizeDom } from "@/lib/sanitize";
 import { takeScreenshot } from "@/utils/screenshot";
 import OpenAI from "openai";
 import React, { createContext, useContext, useEffect, useState } from "react";
