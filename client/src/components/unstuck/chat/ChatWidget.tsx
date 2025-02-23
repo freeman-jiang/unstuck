@@ -184,6 +184,7 @@ export function ChatWidget() {
   const handleHelp = async (userQuery: string) => {
     setError(undefined); // Clear any existing errors
     const sitemap = await getSitemap();
+    console.log("sitemap: ", sitemap);
     setIsAnalyzing(true);
     setChatMessages((prev) => [...prev, { role: "user", content: userQuery }]);
     setLoading({
@@ -211,6 +212,7 @@ export function ChatWidget() {
             screenshot,
             domString,
             previousMessages,
+            sitemap,
           }),
         });
 
