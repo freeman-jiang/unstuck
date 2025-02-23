@@ -12,33 +12,33 @@ import { useCallback, useState } from "react";
 export function ChatWidget() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { getContext } = useUnstuck();
-  
+
   // Function to convert text to speech and play it
   const playTextToSpeech = async (text: string) => {
     try {
-      const response = await fetch('http://localhost:8787/tts', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8787/tts", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ text }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate speech');
+        throw new Error("Failed to generate speech");
       }
 
       // Get the audio data as a blob
       const audioBlob = await response.blob();
-      
+
       // Create an audio element and play it
       const audio = new Audio(URL.createObjectURL(audioBlob));
       return audio.play();
     } catch (error) {
-      console.error('Error playing speech:', error);
+      console.error("Error playing speech:", error);
     }
   };
-  
+
   const conversation = useConversation({
     onConnect: () => console.log("Connected"),
     onDisconnect: () => console.log("Disconnected"),
@@ -51,31 +51,48 @@ export function ChatWidget() {
     website_domain,
     website_description,
   }) => {
-    playTextToSpeech("Alright, let me see how I can help you with that."); // TODO: select from random list of responses
+    // playTextToSpeech("Alright, let me see how I can help you with that."); // TODO: select from random list of responses
 
-    console.log("Getting context");
-    const { interactiveElements, domString, screenshot } = await getContext();
-    console.log(domString);
+    console.log("Starting agent loop");
+    let taskAccomplished = false;
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch("http://localhost:8787/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userQuery: user_query,
-          screenshot,
-          domString,
-          interactiveElements,
-        }),
-      });
+      let iterations = 0;
+      while (!taskAccomplished) {
+        iterations++;
+        const { interactiveElements, domString, screenshot } =
+          await getContext();
 
-      const data = await response.json();
-      console.log("Raw response:", data);
-      const parsed = parseGemini(data);
-      console.log("Parsed response:", parsed);
+        const response = await fetch("http://localhost:8787/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userQuery: user_query,
+            screenshot,
+            domString,
+            interactiveElements,
+          }),
+        });
+
+        const data = await response.json();
+        console.log("Raw response:", data);
+        const {
+          actions,
+          narration,
+          reasoning,
+          taskAccomplished: isAccomplished,
+        } = parseGemini(data);
+
+        console.log("Actions:", actions);
+        console.log("Narration:", narration);
+        console.log("Reasoning:", reasoning);
+        console.log("Iteration:", iterations);
+
+        taskAccomplished = isAccomplished;
+      }
     } catch (error) {
       console.error("Error analyzing page:", error);
     } finally {
