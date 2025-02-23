@@ -1,7 +1,7 @@
+import { fal } from "@fal-ai/client";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { processQuery, type AnalyzeRequest } from "./services/gemini";
-import { fal } from "@fal-ai/client";
 
 // Define environment bindings type
 type Bindings = {
@@ -15,17 +15,107 @@ interface ElevenLabsError {
   detail?: string;
 }
 
-type WizperLanguage = 
-  | "af" | "am" | "ar" | "as" | "az" | "ba" | "be" | "bg" | "bn" | "bo" 
-  | "br" | "bs" | "ca" | "cs" | "cy" | "da" | "de" | "el" | "en" | "es" 
-  | "et" | "eu" | "fa" | "fi" | "fo" | "fr" | "gl" | "gu" | "ha" | "haw" 
-  | "he" | "hi" | "hr" | "ht" | "hu" | "hy" | "id" | "is" | "it" | "ja" 
-  | "jw" | "ka" | "kk" | "km" | "kn" | "ko" | "la" | "lb" | "ln" | "lo" 
-  | "lt" | "lv" | "mg" | "mi" | "mk" | "ml" | "mn" | "mr" | "ms" | "mt" 
-  | "my" | "ne" | "nl" | "nn" | "no" | "oc" | "pa" | "pl" | "ps" | "pt" 
-  | "ro" | "ru" | "sa" | "sd" | "si" | "sk" | "sl" | "sn" | "so" | "sq" 
-  | "sr" | "su" | "sv" | "sw" | "ta" | "te" | "tg" | "th" | "tk" | "tl" 
-  | "tr" | "tt" | "uk" | "ur" | "uz" | "vi" | "yi" | "yo" | "yue" | "zh";
+type WizperLanguage =
+  | "af"
+  | "am"
+  | "ar"
+  | "as"
+  | "az"
+  | "ba"
+  | "be"
+  | "bg"
+  | "bn"
+  | "bo"
+  | "br"
+  | "bs"
+  | "ca"
+  | "cs"
+  | "cy"
+  | "da"
+  | "de"
+  | "el"
+  | "en"
+  | "es"
+  | "et"
+  | "eu"
+  | "fa"
+  | "fi"
+  | "fo"
+  | "fr"
+  | "gl"
+  | "gu"
+  | "ha"
+  | "haw"
+  | "he"
+  | "hi"
+  | "hr"
+  | "ht"
+  | "hu"
+  | "hy"
+  | "id"
+  | "is"
+  | "it"
+  | "ja"
+  | "jw"
+  | "ka"
+  | "kk"
+  | "km"
+  | "kn"
+  | "ko"
+  | "la"
+  | "lb"
+  | "ln"
+  | "lo"
+  | "lt"
+  | "lv"
+  | "mg"
+  | "mi"
+  | "mk"
+  | "ml"
+  | "mn"
+  | "mr"
+  | "ms"
+  | "mt"
+  | "my"
+  | "ne"
+  | "nl"
+  | "nn"
+  | "no"
+  | "oc"
+  | "pa"
+  | "pl"
+  | "ps"
+  | "pt"
+  | "ro"
+  | "ru"
+  | "sa"
+  | "sd"
+  | "si"
+  | "sk"
+  | "sl"
+  | "sn"
+  | "so"
+  | "sq"
+  | "sr"
+  | "su"
+  | "sv"
+  | "sw"
+  | "ta"
+  | "te"
+  | "tg"
+  | "th"
+  | "tk"
+  | "tl"
+  | "tr"
+  | "tt"
+  | "uk"
+  | "ur"
+  | "uz"
+  | "vi"
+  | "yi"
+  | "yo"
+  | "yue"
+  | "zh";
 
 interface ASRRequest {
   audio_data: string; // base64 data URI
@@ -34,6 +124,10 @@ interface ASRRequest {
 
 const VOICE_ID = "iP95p4xoKVk53GoZ742B";
 const app = new Hono<{ Bindings: Bindings }>();
+
+app.get("/", (c) => {
+  return c.json({ message: "Hello, world!" });
+});
 
 // Add CORS middleware
 app.use("/*", cors());
@@ -44,10 +138,10 @@ app.use("/*", async (c, next) => {
     credentials: c.env.FAL_API_KEY,
     requestMiddleware: async (request) => {
       if (request.headers) {
-        request.headers['Authorization'] = `Key ${c.env.FAL_API_KEY}`;
+        request.headers["Authorization"] = `Key ${c.env.FAL_API_KEY}`;
       }
       return request;
-    }
+    },
   });
   await next();
 });
@@ -64,15 +158,15 @@ app.post("/asr", async (c) => {
     console.log("Starting ASR with FAL API...");
 
     // Convert base64 to binary data
-    const binaryStr = atob(audio_data.replace(/^data:audio\/\w+;base64,/, ''));
+    const binaryStr = atob(audio_data.replace(/^data:audio\/\w+;base64,/, ""));
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
       bytes[i] = binaryStr.charCodeAt(i);
     }
 
     // Create a blob from the binary data
-    const audioBlob = new Blob([bytes], { type: 'audio/webm' });
-    
+    const audioBlob = new Blob([bytes], { type: "audio/webm" });
+
     // Upload to FAL storage
     console.log("Uploading audio to FAL storage...");
     const audioUrl = await fal.storage.upload(audioBlob);
@@ -85,26 +179,30 @@ app.post("/asr", async (c) => {
         task: "transcribe",
         language,
         chunk_level: "segment",
-        version: "3"
+        version: "3",
       },
       logs: true,
       onQueueUpdate: (update) => {
         if (update.status === "IN_PROGRESS") {
-          console.log("ASR Progress:", update.logs.map((log) => log.message));
+          console.log(
+            "ASR Progress:",
+            update.logs.map((log) => log.message)
+          );
         }
       },
     });
 
     console.log("FAL API response received");
-    
+
     return c.json({
       text: result.data.text,
       chunks: result.data.chunks,
-      requestId: result.requestId
+      requestId: result.requestId,
     });
   } catch (error) {
     console.error("Error in ASR endpoint:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to process audio";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to process audio";
     return c.json({ error: errorMessage }, 500);
   }
 });
