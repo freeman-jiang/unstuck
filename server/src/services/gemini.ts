@@ -10,19 +10,22 @@ export interface AnalyzeRequest {
   userQuery: string;
   screenshot: string;
   domString: string;
-  interactiveElements: InteractiveElement[];
+  previousMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 }
 
-export async function analyzeQuery(
+export async function processQuery(
   request: AnalyzeRequest,
   apiKey: string
-): Promise<string> {
+): Promise<{
+  result: string;
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+}> {
   const openai = new OpenAI({
     apiKey,
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
   });
 
-  const { userQuery, screenshot, domString } = request;
+  const { userQuery, screenshot, domString, previousMessages } = request;
 
   const userMessage = `
 You are an AI assistant designed to help users navigate a website. Your task is to understand the user's query and provide step-by-step guidance using the available UI elements on the page. You have access to the following information:
@@ -49,10 +52,9 @@ Your goal is to determine the best sequence of actions to fulfill the user's req
 4. Determine the sequence of element IDs to interact with (click, input, etc.) to achieve the user's goal.
 
 Wrap your analysis inside <analysis> tags before providing the final output and provide the final output inside <response> tags. In your analysis:
-a. Identify and list all relevant interactive elements from the DOM
-b. Map the user's query to specific actions or goals
-c. Outline potential paths to achieve the goal
-d. Consider and note any obstacles or intermediate steps
+- Map the user's query to specific actions or goals
+- Outline potential paths to achieve the goal
+- Consider and note any obstacles or intermediate steps
 
 Consider the following:
 - How does the user's query relate to the available elements in the DOM?
@@ -80,24 +82,41 @@ Remember:
 Please provide your analysis and response now.
 `;
 
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    ...previousMessages,
+    {
+      role: "user",
+      content: [
+        { type: "text", text: userMessage },
+        {
+          type: "image_url",
+          image_url: {
+            url: screenshot,
+            detail: "high",
+          },
+        },
+      ],
+    },
+  ];
+
   const completion = await openai.chat.completions.create({
     model: "gemini-2.0-flash",
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: userMessage },
-          {
-            type: "image_url",
-            image_url: {
-              url: screenshot,
-              detail: "high",
-            },
-          },
-        ],
-      },
-    ],
+    messages: messages,
   });
 
-  return completion.choices[0].message.content || "";
+  if (!completion.choices[0].message.content) {
+    throw new Error("No response from Gemini");
+  }
+
+  const result = completion.choices[0].message.content;
+
+  const assistantMessage: OpenAI.Chat.Completions.ChatCompletionMessageParam = {
+    role: "assistant",
+    content: result,
+  };
+
+  return {
+    result,
+    messages: [...messages, assistantMessage],
+  };
 }
