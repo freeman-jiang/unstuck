@@ -2,7 +2,10 @@
 
 import { useConversation } from '@11labs/react';
 import { useCallback, useState } from 'react';
-import Image from 'next/image';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Mic, PhoneOff } from "lucide-react";
+import { getDescription, getDomain } from '@/utils/siteMetadata';
 
 export function ChatWidget() {
   const [isHovered, setIsHovered] = useState(false);
@@ -14,6 +17,12 @@ export function ChatWidget() {
     onError: (error) => console.error('Error:', error),
   });
 
+  const operateBrowser = async (parameters) => {
+    console.log("Operate browser called");
+    console.log(parameters);
+    return "Successfully operated browser";
+  }
+
   const startConversation = useCallback(async () => {
     try {
       // Request microphone permission
@@ -21,6 +30,13 @@ export function ChatWidget() {
       // Start the conversation with your agent
       await conversation.startSession({
         agentId: 'AI0TkDjXVHNFjPGSgHEZ',
+        clientTools: {
+          operateBrowser: operateBrowser
+        },
+        dynamicVariables: {
+          website_domain: getDomain(),
+          website_description: getDescription()
+        }
       });
     } catch (error) {
       console.error('Failed to start conversation:', error);
@@ -32,48 +48,59 @@ export function ChatWidget() {
   }, [conversation]);
 
   return (
-    <div className="fixed bottom-8 right-8 flex flex-col items-end gap-4">
-      <div className="bg-white rounded-2xl shadow-lg p-4 flex items-center gap-4">
-        <div className="w-12 h-12 relative">
-          <Image
-            src="/elevenlabs-icon.svg"
-            alt="ElevenLabs Icon"
-            width={48}
-            height={48}
-            className="rounded-full"
-            priority
-          />
-        </div>
-        <div className="flex flex-col">
-          <h3 className="text-lg font-semibold">Need help?</h3>
-          <button
-            onClick={conversation.status === 'connected' ? stopConversation : startConversation}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+    <div className="fixed bottom-8 right-8 z-50">
+      <Card className="p-4 shadow-lg bg-white/95 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <div 
             className={`
-              flex items-center gap-2 px-6 py-2 rounded-full text-white font-medium
-              ${conversation.status === 'connected' 
-                ? 'bg-red-500 hover:bg-red-600' 
-                : 'bg-black hover:bg-gray-800'}
-              transition-colors duration-200
+              w-12 h-12 relative rounded-full transition-all duration-500
+              bg-gradient-to-br from-blue-400 to-blue-600
+              ${conversation.status === 'connected' && !conversation.isSpeaking 
+                ? "shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-2 ring-blue-400" 
+                : "shadow-sm"}
             `}
           >
-            <svg 
-              viewBox="0 0 24 24" 
-              className="w-5 h-5 fill-current"
-              xmlns="http://www.w3.org/2000/svg"
+            <img
+              src="/elevenlabs-icon.svg"
+              alt="ElevenLabs Icon"
+              className="w-12 h-12 rounded-full"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-col">
+              <h3 className="font-semibold">Need help?</h3>
+              {conversation.status === 'connected' && (
+                <p className="text-sm text-muted-foreground">
+                  {conversation.isSpeaking ? 'Agent is speaking...' : 'Agent is listening...'}
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={conversation.status === 'connected' ? stopConversation : startConversation}
+              variant={conversation.status === 'connected' ? 'destructive' : 'default'}
+              size="sm"
+              className={`
+                gap-2 transition-all duration-200
+                ${conversation.status === 'connected' 
+                  ? "bg-red-500 hover:bg-red-600" 
+                  : "bg-zinc-900 hover:bg-zinc-800 text-white"}
+              `}
             >
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 14.5v-9l6 4.5-6 4.5z"/>
-            </svg>
-            {conversation.status === 'connected' ? 'End call' : 'Voice chat'}
-          </button>
+              {conversation.status === 'connected' ? (
+                <>
+                  <PhoneOff className="h-4 w-4" />
+                  End call
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" />
+                  Voice chat
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
-      {conversation.status === 'connected' && (
-        <div className="bg-white rounded-lg shadow-md p-3 text-sm">
-          {conversation.isSpeaking ? 'Agent is speaking...' : 'Agent is listening...'}
-        </div>
-      )}
+      </Card>
     </div>
   );
 } 
