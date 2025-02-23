@@ -11,6 +11,7 @@ export interface AnalyzeRequest {
   screenshot: string;
   domString: string;
   previousMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+  sitemap: string;
 }
 
 export async function processQuery(
@@ -25,14 +26,19 @@ export async function processQuery(
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
   });
 
-  const { userQuery, screenshot, domString, previousMessages } = request;
+  const { userQuery, screenshot, domString, previousMessages, sitemap } =
+    request;
 
   const userMessage = `
-You are an AI assistant designed to help users navigate a website. Your task is to understand the user's query and provide step-by-step guidance using the available UI elements on the page. You have access to the following information:
+You are an AI assistant designed to help users navigate within this specific website. Your task is to understand the user's query and provide step-by-step guidance using the available UI elements on the page. You have access to the following information:
 
-1. A screenshot of the current page (not directly provided in this prompt)
+1. A sitemap of the website
 2. The DOM structure of the page
-3. A list of interactive elements (buttons, links, etc.) derived from the DOM structure
+
+Here is the sitemap of the website:
+<sitemap>
+${sitemap}
+</sitemap>
 
 Here is the current DOM structure of the page:
 <dom_structure>
@@ -79,6 +85,7 @@ Remember:
 - Don't apologize if you can't immediately find the answer it's normal and expected to have intermediate steps.
 - Ensure that your action sequence is logical and achievable given the available elements.
 - ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
+- DO NOT SAY I'M SORRY I CAN'T FIND THE ANSWER AND GIVE UP OR YOU WILL DIE. You must thoroughly explore and click around the page to find the answer.
 
 Please provide your analysis and response now.
 `;

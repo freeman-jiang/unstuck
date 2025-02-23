@@ -15,6 +15,10 @@ interface BoundingBox {
   y: number;
   width: number;
   height: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
 }
 
 interface WorkflowStep {
@@ -101,7 +105,101 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     };
   }, [isPlaying, currentStep?.elementId]);
 
-  const validateInteractiveElement = (elementId: string): { boundingBox: BoundingBox | null, error?: string } => {
+  const scrollToElement = async (box: BoundingBox, initialCursorPos: { x: number, y: number }): Promise<BoundingBox> => {
+    // Calculate the target scroll position
+    const scrollY = window.scrollY + box.top - (window.innerHeight / 4); // Position element 1/4 from top
+    
+    if (ghostCursorRef.current) {
+      ghostCursorRef.current.setPosition(initialCursorPos.x, initialCursorPos.y);
+    }
+    
+    // First, complete the scroll
+    return new Promise((resolve) => {
+      // Start smooth scroll
+      window.scrollTo({
+        top: scrollY,
+        behavior: 'smooth'
+      });
+
+      let lastPosition = window.scrollY;
+      let stabilityCount = 0;
+      let animationFrame: number | null = null;
+      
+      const checkScrollComplete = () => {
+        const currentScrollY = window.scrollY;
+        
+        if (currentScrollY === lastPosition) {
+          stabilityCount++;
+          if (stabilityCount >= 3) {
+            // Cancel the animation frame first
+            if (animationFrame) {
+              cancelAnimationFrame(animationFrame);
+              animationFrame = null;
+            }
+
+            // Get updated position after scroll is complete
+            const { boundingBox: updatedBox } = validateInteractiveElement(elementId);
+            if (!updatedBox) {
+              console.error('Failed to get updated position after scroll');
+              resolve(box); // Fallback to original box
+              return;
+            }
+
+            // Calculate final cursor position with updated coordinates
+            const finalX = updatedBox.x + updatedBox.width / 2;
+            const finalY = updatedBox.y + updatedBox.height / 2;
+
+            // Move cursor to updated position
+            if (ghostCursorRef.current) {
+              ghostCursorRef.current.moveTo(finalX, finalY).then(() => {
+                // Double check position one last time
+                const { boundingBox: finalBox } = validateInteractiveElement(elementId);
+                ghostCursorRef.current.show();
+                resolve(finalBox || updatedBox);
+              });
+            } else {
+              resolve(updatedBox);
+            }
+            return;
+          }
+        } else {
+          // Reset stability count if scroll position changed
+          stabilityCount = 0;
+          lastPosition = currentScrollY;
+        }
+
+        // Continue checking only if we haven't reached stability
+        animationFrame = requestAnimationFrame(checkScrollComplete);
+      };
+      
+      // Start the initial check
+      animationFrame = requestAnimationFrame(checkScrollComplete);
+
+      // Set a maximum timeout for scroll completion (3 seconds)
+      setTimeout(() => {
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+          
+          // Get final position even if we timeout
+          const { boundingBox: timeoutBox } = validateInteractiveElement(elementId);
+          if (timeoutBox) {
+            const finalX = timeoutBox.x + timeoutBox.width / 2;
+            const finalY = timeoutBox.y + timeoutBox.height / 2;
+            
+            if (ghostCursorRef.current) {
+              ghostCursorRef.current.moveTo(finalX, finalY);
+            }
+            resolve(timeoutBox);
+          } else {
+            resolve(box); // Fallback to original box
+          }
+        }
+      }, 3000);
+    });
+  };
+
+  const validateInteractiveElement = (elementId: string): { boundingBox: BoundingBox | null, error?: string, needsScroll?: boolean } => {
     try {
       if (!elementId) {
         return { boundingBox: null, error: 'No element ID provided' };
@@ -141,8 +239,9 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
         return { boundingBox: null, error };
       }
 
-      // Verify the element is visible and has dimensions
+      // Get the element's position and dimensions
       const boundingBox = element.getBoundingClientRect();
+      
       if (boundingBox.width === 0 || boundingBox.height === 0) {
         const error = `Element found with ${usedSelector} but has no dimensions`;
         console.warn(error);
@@ -156,9 +255,12 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
                        boundingBox.right > 0;
 
       if (!isVisible) {
-        const error = `Element found with ${usedSelector} but is not visible in viewport`;
-        console.warn(error);
-        return { boundingBox: null, error };
+        console.log('Element not in viewport, needs scrolling');
+        return { 
+          boundingBox, 
+          needsScroll: true,
+          error: `Element found with ${usedSelector} but is not visible in viewport`
+        };
       }
 
       console.log('Found valid interactive element:', { 
@@ -198,21 +300,6 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     }
   };
 
-  const getWorkflowStep = (): WorkflowStep | null => {
-    const { boundingBox, error } = validateInteractiveElement(elementId);
-    
-    if (!boundingBox) {
-      console.error('Failed to create workflow step:', error);
-      return null;
-    }
-    
-    return {
-      elementId,
-      boundingBox,
-      waitForInteraction: true,
-    };
-  };
-
   const executeWorkflow = async () => {
     if (isPlaying) return;
     
@@ -220,10 +307,16 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       console.log('Starting workflow...');
       
       // Initialize workflow step
-      const step = getWorkflowStep();
-      if (!step || !step.boundingBox) {
-        throw new Error('No valid workflow step found');
+      const { boundingBox, needsScroll, error } = validateInteractiveElement(elementId);
+      if (!boundingBox) {
+        throw new Error(error || 'No valid workflow step found');
       }
+
+      const step = {
+        elementId,
+        boundingBox,
+        waitForInteraction: true,
+      };
 
       setCurrentStep(step);
       setIsPlaying(true);
@@ -250,30 +343,45 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
       const mouseX = window.innerWidth - 100;
       const mouseY = window.innerHeight - 100;
       
-      // Check if cursor still exists before operations
       if (!ghostCursorRef.current) {
         throw new Error('Ghost cursor was cleaned up');
       }
       ghostCursorRef.current.setPosition(mouseX, mouseY);
       
-      // Small delay before starting movement
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      let finalBoundingBox = boundingBox;
 
-      // Revalidate element position before moving
-      const { boundingBox: updatedBox } = validateInteractiveElement(step.elementId);
-      if (!updatedBox) {
-        throw new Error('Target element no longer found');
+      // If element needs scrolling, do it before moving cursor
+      if (needsScroll) {
+        console.log('Scrolling to element');
+        try {
+          // Synchronize scroll and cursor movement
+          finalBoundingBox = await scrollToElement(boundingBox, { x: mouseX, y: mouseY });
+          
+          // Verify the element is now visible
+          const { needsScroll: stillNeedsScroll } = validateInteractiveElement(step.elementId);
+          if (stillNeedsScroll) {
+            throw new Error('Failed to scroll element into view');
+          }
+
+          // Update the step with stable position
+          setCurrentStep(prev => prev ? { ...prev, boundingBox: finalBoundingBox } : null);
+        } catch (error) {
+          console.error('Error during scroll:', error);
+          throw new Error('Failed to scroll to element');
+        } finally {
+          if (ghostCursorRef.current) {
+            ghostCursorRef.current.show();
+          }
+        }
+      } else {
+        // If no scroll needed, move cursor directly
+        if (!ghostCursorRef.current) {
+          throw new Error('Ghost cursor was cleaned up');
+        }
+        const targetX = boundingBox.x + boundingBox.width / 2;
+        const targetY = boundingBox.y + boundingBox.height / 2;
+        await ghostCursorRef.current.moveTo(targetX, targetY);
       }
-
-      // Check again if cursor exists before moving
-      if (!ghostCursorRef.current) {
-        throw new Error('Ghost cursor was cleaned up');
-      }
-
-      // Move cursor to target
-      const targetX = updatedBox.x + updatedBox.width / 2;
-      const targetY = updatedBox.y + updatedBox.height / 2;
-      await ghostCursorRef.current.moveTo(targetX, targetY);
 
       // Add delay before showing the highlight box
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -283,8 +391,8 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
         throw new Error('Visual elements were cleaned up');
       }
 
-      // Show highlight box
-      highlightRef.current.show(updatedBox, '');
+      // Show highlight box with final position
+      highlightRef.current.show(finalBoundingBox, '');
     } catch (error) {
       console.error('Error during workflow execution:', error);
       // Always clean up and complete on error
