@@ -30,6 +30,8 @@ export interface MaximizedChatProps {
   input: string;
   error?: ErrorState;
   loading?: LoadingState;
+  isVoiceEnabled: boolean;
+  onVoiceToggle: () => void;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onMinimize: () => void;

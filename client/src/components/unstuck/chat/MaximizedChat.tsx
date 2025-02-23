@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Phone, X, Minimize2, AlertCircle, Loader2 } from "lucide-react";
+import { Phone, X, Minimize2, AlertCircle, Loader2, Volume2, VolumeX } from "lucide-react";
 import { MaximizedChatProps } from "./types";
 
 export const MaximizedChat = ({
@@ -10,6 +10,8 @@ export const MaximizedChat = ({
   input,
   error,
   loading,
+  isVoiceEnabled,
+  onVoiceToggle,
   onInputChange,
   onSubmit,
   onMinimize,
@@ -28,6 +30,19 @@ export const MaximizedChat = ({
             press <kbd className="px-1 py-0.5 bg-gray-100 rounded">tab</kbd> to continue
           </div>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-purple-50"
+          onClick={onVoiceToggle}
+          title={isVoiceEnabled ? "Disable voice" : "Enable voice"}
+        >
+          {isVoiceEnabled ? (
+            <Volume2 className="h-3 w-3 text-purple-600" />
+          ) : (
+            <VolumeX className="h-3 w-3 text-gray-400" />
+          )}
+        </Button>
         <Button
           variant="ghost"
           size="sm"

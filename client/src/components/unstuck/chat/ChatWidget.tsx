@@ -19,6 +19,7 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<ErrorState | undefined>();
   const [loading, setLoading] = useState<LoadingState | undefined>();
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const { getCurrentContext, setUserQuery } = useUnstuck();
 
   // Helper to show errors
@@ -32,12 +33,10 @@ export function ChatWidget() {
   };
 
   const playTextToSpeech = async (text: string) => {
-    try {
-      setLoading({
-        isLoading: true,
-        message: "Generating audio response..."
-      });
+    // Skip TTS if voice is disabled
+    if (!isVoiceEnabled) return;
 
+    try {
       const response = await fetch("http://localhost:8787/tts", {
         method: "POST",
         headers: {
@@ -64,20 +63,12 @@ export function ChatWidget() {
       // Clean up the URL after playback
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
-        setLoading(undefined);
       };
-
-      setLoading({
-        isLoading: true,
-        message: "Playing audio response..."
-      });
 
       await audio.play();
     } catch (error) {
       console.error("Error playing text-to-speech:", error);
       showError("Failed to play audio message");
-    } finally {
-      setLoading(undefined);
     }
   };
 
@@ -90,6 +81,10 @@ export function ChatWidget() {
     const sitemap = await getSitemap();
     setIsAnalyzing(true);
     setChatMessages((prev) => [...prev, { role: "user", content: userQuery }]);
+    setLoading({
+      isLoading: true,
+      message: "Thinking..."
+    });
 
     console.log("starting agent loop");
     let taskAccomplished = false;
@@ -97,12 +92,6 @@ export function ChatWidget() {
     let previousMessages = [];
     try {
       while (!taskAccomplished) {
-        setLoading({
-          isLoading: true,
-          message: "Analyzing your request...",
-          progress: iterations === 0 ? 0.2 : iterations / (iterations + 1)
-        });
-
         const { domString, screenshot } = await getCurrentContext();
         console.log("Iteration: ", iterations);
         console.log("previousMessages: ", previousMessages);
@@ -129,6 +118,9 @@ export function ChatWidget() {
 
         const assistantMessage = parsedGemini.narration || parsedGemini.reasoning || "I'll help you with that.";
         
+        // Clear loading state before showing the message
+        setLoading(undefined);
+        
         setChatMessages((prev) => [
           ...prev,
           {
@@ -144,12 +136,6 @@ export function ChatWidget() {
           const firstAction = parsedGemini.actions[0];
           setIsWorkflowActive(true);
           setChatState('minimized');
-          
-          setLoading({
-            isLoading: true,
-            message: "Setting up workflow...",
-            progress: 0.8
-          });
 
           const workflowPromise = new Promise<void>((resolve) => {
             const container = document.createElement('div');
@@ -181,14 +167,12 @@ export function ChatWidget() {
         iterations++;
         taskAccomplished = parsedGemini.taskAccomplished;
 
-        if (taskAccomplished) {
+        if (!taskAccomplished) {
+          // Only set loading state if we're continuing the loop
           setLoading({
             isLoading: true,
-            message: "Finalizing...",
-            progress: 1
+            message: "Thinking..."
           });
-          // Add a small delay to show the completion state
-          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       
@@ -261,6 +245,8 @@ export function ChatWidget() {
             input={input}
             error={error}
             loading={loading}
+            isVoiceEnabled={isVoiceEnabled}
+            onVoiceToggle={() => setIsVoiceEnabled(!isVoiceEnabled)}
             onInputChange={setInput}
             onSubmit={handleSubmit}
             onMinimize={() => setChatState('minimized')}
