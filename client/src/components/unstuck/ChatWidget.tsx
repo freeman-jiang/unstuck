@@ -5,9 +5,10 @@ import { Card } from "@/components/ui/card";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getDescription, getDomain } from "@/utils/siteMetadata";
-import { MessageCircle, X } from "lucide-react";
-import { useState } from "react";
+import { MessageCircle, Phone, X } from "lucide-react";
+import { useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
+
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,6 +16,11 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
   const [input, setInput] = useState('');
   const { getContext } = useUnstuck();
+
+
+  const startCall = useCallback(async () => {
+    console.log("starting call")
+  }, []);
 
   const handleHelp = async (userQuery: string) => {
 
@@ -107,8 +113,21 @@ export function ChatWidget() {
           
           <div className="flex-1 p-6 space-y-4 max-h-[500px] overflow-y-auto">
             {messages.length === 0 && (
-              <div className="text-center py-8 text-gray-500 text-sm px-8">
-                Tell us what you need and we will guide you through it
+              <div className="text-center space-y-6">
+                <p className="text-gray-500 text-sm px-8">
+                  Tell us what you need and we will guide you through it
+                </p>
+                <div className="flex justify-center">
+                  <Button
+                    onClick={startCall}
+                    variant="ghost"
+                    size="lg"
+                    className="rounded-full px-8 py-6 bg-purple-50 hover:bg-purple-100 text-purple-600 font-medium gap-2 transition-colors"
+                  >
+                    <Phone className="h-5 w-5" />
+                    Start a call instead
+                  </Button>
+                </div>
               </div>
             )}
             {messages.map((message, i) => (
@@ -163,9 +182,10 @@ export function ChatWidget() {
         <Button
           onClick={() => setIsOpen(true)}
           size="lg"
-          className="rounded-full h-12 w-12 p-0 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg"
+          className="rounded-full h-12 pl-4 pr-6 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg flex items-center gap-2"
         >
-          <MessageCircle className="h-6 w-6 text-white" />
+          <MessageCircle className="h-5 w-5 text-white" />
+          <span className="text-white font-medium">Need help?</span>
         </Button>
       )}
     </div>
