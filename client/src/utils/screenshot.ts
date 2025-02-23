@@ -40,10 +40,10 @@ export const takeScreenshot = async (
       backgroundColor: '#ffffff',
       width: viewportWidth,
       height: fullHeight,
-      windowWidth: viewportWidth, // Keep original viewport width
-      windowHeight: window.innerHeight, // Keep original viewport height
-      scrollX: -window.scrollX, // Adjust for scroll position
-      scrollY: -window.scrollY,
+      windowWidth: viewportWidth,
+      windowHeight: window.innerHeight,
+      scrollX: 0,
+      scrollY: 0,
       onclone: (clonedDoc) => {
         // Fix any fixed position elements
         const fixed = clonedDoc.getElementsByClassName("fixed");
@@ -59,7 +59,7 @@ export const takeScreenshot = async (
       if (!ctx) return canvas.toDataURL("image/png");
 
       highlightElements.forEach(({ boundingBox, id }) => {
-        // Calculate absolute position (relative to document, not viewport)
+        // Get the element's position relative to the viewport
         const rect = {
           left: boundingBox.left,
           top: boundingBox.top,
@@ -108,13 +108,14 @@ export const takeScreenshot = async (
     );
     
     // Create blob URL
-    // const blobUrl = URL.createObjectURL(blob);
-    // console.log("blobUrl: ", blobUrl);
-    // // open the blob url in a new tab
-    // window.open(blobUrl, '_blank');
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Open the blob url in a new tab without switching focus
+    const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    window.focus(); // Keep focus on current window
 
-    // // clean up the blob url
-    // URL.revokeObjectURL(blobUrl);
+    // Clean up the blob url
+    URL.revokeObjectURL(blobUrl);
 
     // Return data URL for storage/transmission if needed
     return canvas.toDataURL("image/png");
