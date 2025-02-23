@@ -76,7 +76,7 @@ Your goal is to determine the best sequence of actions to fulfill the user's req
 3. If there's no direct match for the user's query, plan intermediate steps that would lead to the desired outcome.
 4. Determine the sequence of element IDs to interact with (click, input, etc.) to achieve the user's goal.
 
-Wrap your analysis inside <analysis> tags before providing the final output. In your analysis:
+Wrap your analysis inside <analysis> tags before providing the final output and provide the final output inside <response> tags. In your analysis:
 a. Identify and list all relevant interactive elements from the DOM
 b. Map the user's query to specific actions or goals
 c. Outline potential paths to achieve the goal
