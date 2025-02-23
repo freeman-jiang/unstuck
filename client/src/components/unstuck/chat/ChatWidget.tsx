@@ -4,7 +4,7 @@ import { WorkflowCreator } from "@/components/WorkflowCreator";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import { MaximizedChat } from "./MaximizedChat";
 import { MinimizedChat } from "./MinimizedChat";
@@ -21,8 +21,11 @@ export function ChatWidget() {
   const [loading, setLoading] = useState<LoadingState | undefined>();
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
   const { getCurrentContext, setUserQuery } = useUnstuck();
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const successMessages = [
     "Looks like we got to the page you were looking for. Let me know if you need anything else!",
@@ -49,6 +52,12 @@ export function ChatWidget() {
     if (!isVoiceEnabled) return;
 
     try {
+      // Stop any currently playing audio
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+
       const response = await fetch("http://localhost:8787/tts", {
         method: "POST",
         headers: {
@@ -71,10 +80,12 @@ export function ChatWidget() {
 
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
 
       // Clean up the URL after playback
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        currentAudioRef.current = null;
       };
 
       await audio.play();
@@ -101,15 +112,15 @@ export function ChatWidget() {
       };
 
       recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const blob = new Blob(chunks, { type: "audio/webm" });
         const reader = new FileReader();
-        
+
         reader.onloadend = async () => {
-          if (typeof reader.result === 'string') {
+          if (typeof reader.result === "string") {
             try {
               setLoading({
                 isLoading: true,
-                message: "Transcribing audio..."
+                message: "Transcribing audio...",
               });
 
               const response = await fetch("http://localhost:8787/asr", {
@@ -119,7 +130,7 @@ export function ChatWidget() {
                 },
                 body: JSON.stringify({
                   audio_data: reader.result,
-                  language: "en"
+                  language: "en",
                 }),
               });
 
@@ -137,16 +148,20 @@ export function ChatWidget() {
               setLoading(undefined);
             } catch (error) {
               console.error("Error transcribing audio:", error);
-              showError(error instanceof Error ? error.message : "Failed to transcribe audio");
+              showError(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to transcribe audio"
+              );
               setLoading(undefined);
             }
           }
         };
 
         reader.readAsDataURL(blob);
-        
+
         // Clean up the stream
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       recorder.start();
@@ -159,7 +174,7 @@ export function ChatWidget() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
       setIsRecording(false);
       setMediaRecorder(null);
