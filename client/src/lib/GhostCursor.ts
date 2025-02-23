@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-
 interface Position {
   x: number;
   y: number;
@@ -35,61 +33,70 @@ export class GhostCursor {
   constructor(options: CursorOptions = {}) {
     this.debug = options.debug || false;
     this.options = {
-      color: options.color || 'rgba(75, 75, 255, 0.8)',
+      color: options.color || "rgba(75, 75, 255, 0.8)",
       size: options.size || 20,
-      glowColor: options.glowColor || 'rgba(75, 75, 255, 0.4)',
+      glowColor: options.glowColor || "rgba(75, 75, 255, 0.4)",
       glowSize: options.glowSize || 10,
       moveDuration: options.moveDuration || 500,
-      easing: options.easing || ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+      easing:
+        options.easing ||
+        ((t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)),
       debug: this.debug,
       trailLength: options.trailLength || 20,
-      trailFadeSpeed: options.trailFadeSpeed || 50
+      trailFadeSpeed: options.trailFadeSpeed || 50,
     };
 
     // Check if browser supports coalesced events
-    this.supportsCoalescedEvents = typeof window !== 'undefined' && 
-      typeof window.PointerEvent !== 'undefined' && 
-      'getCoalescedEvents' in window.PointerEvent.prototype;
+    this.supportsCoalescedEvents =
+      typeof window !== "undefined" &&
+      typeof window.PointerEvent !== "undefined" &&
+      "getCoalescedEvents" in window.PointerEvent.prototype;
 
     this.initializeCanvas();
   }
 
   private initializeCanvas() {
     // Create and configure the canvas element
-    this.canvas = document.createElement('canvas');
+    this.canvas = document.createElement("canvas");
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
-    this.canvas.style.position = 'fixed';
-    this.canvas.style.top = '0';
-    this.canvas.style.left = '0';
-    this.canvas.style.pointerEvents = 'none';
-    this.canvas.style.zIndex = '10000';
+    this.canvas.style.position = "fixed";
+    this.canvas.style.top = "0";
+    this.canvas.style.left = "0";
+    this.canvas.style.pointerEvents = "none";
+    this.canvas.style.zIndex = "10000";
     document.body.appendChild(this.canvas);
 
     // Get the canvas context
-    const ctx = this.canvas.getContext('2d');
+    const ctx = this.canvas.getContext("2d");
     if (!ctx) {
-      throw new Error('Could not get canvas context');
+      throw new Error("Could not get canvas context");
     }
     this.ctx = ctx;
 
     // Handle window resize
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       this.canvas.width = window.innerWidth;
       this.canvas.height = window.innerHeight;
       this.drawCursor(this.currentPosition);
     });
 
     if (this.debug) {
-      console.log('Canvas initialized:', {
+      console.log("Canvas initialized:", {
         width: this.canvas.width,
         height: this.canvas.height,
-        position: this.currentPosition
+        position: this.currentPosition,
       });
     }
   }
 
-  private drawCursor(position: Position, pulseScale: number = 1, outerPulseScale: number = 1, opacity: number = 1, clickScale: number = 1) {
+  private drawCursor(
+    position: Position,
+    pulseScale: number = 1,
+    outerPulseScale: number = 1,
+    opacity: number = 1,
+    clickScale: number = 1
+  ) {
     // Clear the previous frame
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -99,8 +106,17 @@ export class GhostCursor {
     // Draw outer pulse ring with fading opacity
     if (outerPulseScale > 0) {
       this.ctx.beginPath();
-      this.ctx.arc(position.x, position.y, (this.options.size / 3) * outerPulseScale * clickScale, 0, Math.PI * 2);
-      this.ctx.strokeStyle = this.options.color.replace(/[\d.]+\)$/, `${0.3 * opacity})`);
+      this.ctx.arc(
+        position.x,
+        position.y,
+        (this.options.size / 3) * outerPulseScale * clickScale,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.strokeStyle = this.options.color.replace(
+        /[\d.]+\)$/,
+        `${0.3 * opacity})`
+      );
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
     }
@@ -108,8 +124,17 @@ export class GhostCursor {
     // Draw inner pulse ring with fading opacity
     if (pulseScale > 0) {
       this.ctx.beginPath();
-      this.ctx.arc(position.x, position.y, (this.options.size / 4) * pulseScale * clickScale, 0, Math.PI * 2);
-      this.ctx.strokeStyle = this.options.color.replace(/[\d.]+\)$/, `${0.5 * opacity})`);
+      this.ctx.arc(
+        position.x,
+        position.y,
+        (this.options.size / 4) * pulseScale * clickScale,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.strokeStyle = this.options.color.replace(
+        /[\d.]+\)$/,
+        `${0.5 * opacity})`
+      );
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
     }
@@ -124,40 +149,59 @@ export class GhostCursor {
       this.options.glowSize * clickScale
     );
     gradient.addColorStop(0, this.options.glowColor);
-    gradient.addColorStop(1, 'rgba(75, 75, 255, 0)');
+    gradient.addColorStop(1, "rgba(75, 75, 255, 0)");
 
     this.ctx.beginPath();
-    this.ctx.arc(position.x, position.y, this.options.glowSize * clickScale, 0, Math.PI * 2);
+    this.ctx.arc(
+      position.x,
+      position.y,
+      this.options.glowSize * clickScale,
+      0,
+      Math.PI * 2
+    );
     this.ctx.fillStyle = gradient;
     this.ctx.fill();
 
     // Draw cursor center with combined click and bounce scale
     this.ctx.beginPath();
-    this.ctx.arc(position.x, position.y, (this.options.size / 4) * clickScale, 0, Math.PI * 2);
+    this.ctx.arc(
+      position.x,
+      position.y,
+      (this.options.size / 4) * clickScale,
+      0,
+      Math.PI * 2
+    );
     this.ctx.fillStyle = this.options.color;
     this.ctx.fill();
 
     if (this.debug) {
-      console.log('Drew cursor at:', position, 'with scales:', { pulseScale, outerPulseScale, clickScale });
+      console.log("Drew cursor at:", position, "with scales:", {
+        pulseScale,
+        outerPulseScale,
+        clickScale,
+      });
     }
   }
 
   private drawTrail() {
     const now = Date.now();
-    
+
     // Update trail positions and remove old ones
-    this.trailPositions = this.trailPositions.filter(pos => {
+    this.trailPositions = this.trailPositions.filter((pos) => {
       if (!pos.timestamp) return false;
       const age = now - pos.timestamp;
-      pos.opacity = Math.max(0, 1 - (age / this.options.trailFadeSpeed));
+      pos.opacity = Math.max(0, 1 - age / this.options.trailFadeSpeed);
       return pos.opacity > 0;
     });
 
     // Draw trail positions
-    this.trailPositions.forEach(pos => {
+    this.trailPositions.forEach((pos) => {
       if (!pos.opacity) return;
-      
-      const color = this.options.color.replace(/[\d.]+\)$/, `${pos.opacity * 0.3})`);
+
+      const color = this.options.color.replace(
+        /[\d.]+\)$/,
+        `${pos.opacity * 0.3})`
+      );
       const size = this.options.size * 0.5 * pos.opacity;
 
       this.ctx.beginPath();
@@ -170,10 +214,10 @@ export class GhostCursor {
   private async animate(
     start: Position,
     end: Position,
-    duration: number,
+    duration: number
   ): Promise<void> {
     if (this.isAnimating) {
-      if (this.debug) console.warn('Animation already in progress');
+      if (this.debug) console.warn("Animation already in progress");
       return;
     }
 
@@ -212,7 +256,7 @@ export class GhostCursor {
     this.trailPositions.push({
       ...position,
       timestamp: now,
-      opacity: 1
+      opacity: 1,
     });
 
     // Keep trail length within limit
@@ -225,7 +269,7 @@ export class GhostCursor {
     if (this.isPulsing) return;
     this.isPulsing = true;
 
-    const duration = 1000; // Shorter duration for more dynamic feel
+    const duration = 1500; // Shorter duration for more dynamic feel
     const startTime = performance.now();
     const bounceHeight = 10; // pixels to bounce up/down
     let currentBounceY = 0;
@@ -233,7 +277,7 @@ export class GhostCursor {
     // Track multiple pulse rings and bounce state
     const rings = [
       { startTime: startTime, scale: 0 },
-      { startTime: startTime + duration / 2, scale: 0 }
+      { startTime: startTime + duration / 2, scale: 0 },
     ];
 
     const animate = (currentTime: number) => {
@@ -244,10 +288,11 @@ export class GhostCursor {
 
       // Calculate bounce offset
       const bounceProgress = ((currentTime - startTime) % duration) / duration;
-      const bounceOffset = Math.sin(bounceProgress * Math.PI )*bounceHeight*0.7;
-      
+      const bounceOffset =
+        Math.sin(bounceProgress * Math.PI) * bounceHeight * 0.7;
+
       // Update current bounce position
-      currentBounceY = this.currentPosition.y + bounceOffset;
+      currentBounceY = this.currentPosition.y + bounceOffset - 5;
 
       // Draw trail if exists
       this.drawTrail();
@@ -265,7 +310,7 @@ export class GhostCursor {
         if (opacity > 0) {
           const bouncedPosition = {
             ...this.currentPosition,
-            y: currentBounceY
+            y: currentBounceY,
           };
           this.drawCursor(
             bouncedPosition,
@@ -284,11 +329,12 @@ export class GhostCursor {
       // Draw the base cursor on top with bounce
       const finalPosition = {
         ...this.currentPosition,
-        y: currentBounceY
+        y: currentBounceY,
       };
-      
+
       // Add a slight scale bounce effect
-      const scaleBounceFactor = 1 + Math.abs(Math.sin(bounceProgress * Math.PI * 2)) * 0.2;
+      const scaleBounceFactor =
+        1 + Math.abs(Math.sin(bounceProgress * Math.PI * 2)) * 0.2;
       this.drawCursor(finalPosition, 1, 1, 1, scaleBounceFactor);
 
       this.animationFrame = requestAnimationFrame(animate);
@@ -313,7 +359,7 @@ export class GhostCursor {
     if (this.supportsCoalescedEvents) {
       // Clear existing trail
       this.trailPositions = [];
-      
+
       // Add current position to trail before starting new movement
       this.addToTrail(this.currentPosition);
     }
@@ -331,12 +377,12 @@ export class GhostCursor {
   public setPosition(x: number, y: number): void {
     const newPosition = { x, y };
     this.currentPosition = newPosition;
-    
+
     // Add to trail if not the initial position
     if (this.trailPositions.length > 0) {
       this.addToTrail(newPosition);
     }
-    
+
     this.drawCursor(this.currentPosition);
   }
 
@@ -357,14 +403,14 @@ export class GhostCursor {
     this.canvas.remove();
 
     if (this.debug) {
-      console.log('Cursor destroyed');
+      console.log("Cursor destroyed");
     }
   }
 
   public async click(): Promise<void> {
     if (this.isClicking) return;
     this.isClicking = true;
-    
+
     const startTime = performance.now();
     const clickDuration = 300; // 300ms for click animation
 
@@ -372,11 +418,12 @@ export class GhostCursor {
       const animate = (currentTime: number) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / clickDuration, 1);
-        
+
         // Create a "squish" effect
-        const clickScale = progress < 0.5 
-          ? 1 - (progress * 0.3) // Squish down to 70% size
-          : 0.7 + ((progress - 0.5) * 0.6); // Return to normal size
+        const clickScale =
+          progress < 0.5
+            ? 1 - progress * 0.3 // Squish down to 70% size
+            : 0.7 + (progress - 0.5) * 0.6; // Return to normal size
 
         this.drawCursor(this.currentPosition, 1, 1, 1, clickScale);
 

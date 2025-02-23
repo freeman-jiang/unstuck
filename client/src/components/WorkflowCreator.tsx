@@ -594,9 +594,9 @@ export const WorkflowCreator: React.FC<WorkflowCreatorProps> = ({
     // Add keyboard event listener for tab key
     const handleKeyDown = async (event: KeyboardEvent) => {
       console.log("handling keydown");
-      if (event.key === "Tab" && currentStep?.elementId) {
+      if (event.key === "Enter" && currentStep?.elementId) {
         console.log("trying to click", currentStep.elementId);
-        event.preventDefault(); // Prevent default tab behavior
+        event.preventDefault(); // Prevent default enter behavior
 
         const element = document.querySelector(
           `[data-unstuck-id="${currentStep.elementId}"]`
