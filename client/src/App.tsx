@@ -20,7 +20,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CurrencyProvider>
-        <UnstuckProvider apiKey="test-api-key">
+        <UnstuckProvider
+          config={{
+            apiKey: "test-api-key",
+            serverUrl: "http://localhost:8787",
+          }}
+        >
           {/* <WorkflowCreator /> */}
           <div className="min-h-screen bg-background font-sans antialiased">
             <Toaster />

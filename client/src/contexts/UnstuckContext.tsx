@@ -14,6 +14,7 @@ interface InteractiveElement {
 interface UnstuckContextType {
   interactives: InteractiveElement[];
   apiKey: string;
+  serverUrl: string;
   getCurrentContext: () => Promise<{
     domString: string;
     screenshot: string;
@@ -107,13 +108,17 @@ function processNode(node: Element) {
   return null;
 }
 
-export function UnstuckProvider({ 
-  children,
-  apiKey 
-}: { 
-  children: React.ReactNode;
+interface UnstuckConfig {
   apiKey: string;
-}) {
+  serverUrl?: string; // defaults to http://localhost:8787
+}
+
+interface UnstuckProviderProps {
+  children: React.ReactNode;
+  config: UnstuckConfig;
+}
+
+export function UnstuckProvider({ children, config }: UnstuckProviderProps) {
   const [userQuery, setUserQuery] = useState<string | null>(null);
   const [previousMessages, setPreviousMessages] = useState<
     OpenAI.Chat.Completions.ChatCompletionMessageParam[]
@@ -206,11 +211,12 @@ export function UnstuckProvider({
     return () => observer.disconnect();
   }, []);
 
-  return (
+  return ( 
     <UnstuckContext.Provider
       value={{
         interactives,
-        apiKey,
+        apiKey: config.apiKey,
+        serverUrl: config.serverUrl,
         getCurrentContext,
         setUserQuery,
         setPreviousMessages,

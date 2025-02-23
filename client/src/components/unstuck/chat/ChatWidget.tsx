@@ -26,7 +26,7 @@ export function ChatWidget() {
     null
   );
   const [isCallActive, setIsCallActive] = useState(false);
-  const { getCurrentContext, setUserQuery, apiKey } = useUnstuck();
+  const { getCurrentContext, setUserQuery, apiKey, serverUrl } = useUnstuck();
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const successMessages = [
@@ -76,7 +76,7 @@ export function ChatWidget() {
               message: "Transcribing audio...",
             });
 
-            const response = await fetch("http://localhost:8787/asr", {
+            const response = await fetch(`${serverUrl}/asr`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -146,7 +146,7 @@ export function ChatWidget() {
         currentAudioRef.current = null;
       }
 
-      const response = await fetch("http://localhost:8787/tts", {
+      const response = await fetch(`${serverUrl}/tts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -245,7 +245,7 @@ export function ChatWidget() {
                 message: "Transcribing audio...",
               });
 
-              const response = await fetch("http://localhost:8787/asr", {
+              const response = await fetch(`${serverUrl}/asr`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -326,7 +326,7 @@ export function ChatWidget() {
         console.log("Iteration: ", iterations);
         console.log("previousMessages: ", previousMessages);
 
-        const response = await fetch("http://localhost:8787/analyze", {
+        const response = await fetch(`${serverUrl}/analyze`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
