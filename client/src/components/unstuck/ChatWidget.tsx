@@ -22,7 +22,11 @@ export function ChatWidget() {
   });
 
   
-  const handleHelp = async () => {
+  const handleHelp = async ({
+    user_query,
+    website_domain,
+    website_description
+  }) => {
     console.log("Getting context");
     const { interactiveElements, domString, screenshot } = await getContext();
     console.log(domString);
@@ -35,7 +39,7 @@ export function ChatWidget() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userQuery: "I want to change the currency to be from USD to CAD", // Placeholder query
+          userQuery: user_query,
           screenshot,
           domString,
           interactiveElements,
