@@ -101,24 +101,36 @@ export const takeScreenshot = async (
         );
       });
     }
-
-    // Convert canvas to blob
+    // Convert canvas to data URL
+    const dataUrl = canvas.toDataURL("image/png");
+    
+    // Create blob URL for download
     const blob = await new Promise<Blob>((resolve) => 
       canvas.toBlob((blob) => resolve(blob!), 'image/png')
     );
-    
-    // Create blob URL
     const blobUrl = URL.createObjectURL(blob);
-    
-    // Open the blob url in a new tab without switching focus
-    const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
-    window.focus(); // Keep focus on current window
 
-    // Clean up the blob url
-    URL.revokeObjectURL(blobUrl);
+    // Create and display URL in console
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `screenshot-${timestamp}.png`;
+    console.log('Screenshot ready:', filename);
+    
+    // Create and trigger download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = blobUrl;
+    downloadLink.download = filename;
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up blob URL after 5 minutes
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 300000); // 5 minutes in milliseconds
 
     // Return data URL for storage/transmission if needed
-    return canvas.toDataURL("image/png");
+    return dataUrl;
   } catch (error) {
     console.error("Failed to take screenshot:", error);
     throw error;
