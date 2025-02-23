@@ -66,7 +66,7 @@ After your analysis, provide your response in the following JSON format:
 {
   "reasoning": "A detailed explanation of how you determined the action sequence",
   "actions": ["div-div-a-3", "nav-div-a-1", ...] 
-  "narration": "A brief, concise description of what you're doing for the user",
+  "narration": "A brief, concise, but conversational description of what you're doing for the user, in first person.",
   "taskAccomplished": true or false
 }
 
@@ -75,7 +75,7 @@ The "reasoning" field should contain your step-by-step explanation of how you ar
 Remember:
 - It's okay if there's no direct match for the user's query. In such cases, focus on the steps that would most likely lead to the user's final goal.
 - Your response should be based solely on the information provided in the user query and DOM structure.
-- Keep the narration concise and clear
+- Keep the narration concise and clear, but conversational and friendly. Keep it to the point!ç
 - Ensure that your action sequence is logical and achievable given the available elements.
 - ONLY include data-unstuck-id values in the actions array OR YOU WILL DIE.
 
