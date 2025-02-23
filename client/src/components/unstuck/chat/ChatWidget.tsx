@@ -4,13 +4,13 @@ import { WorkflowCreator } from "@/components/WorkflowCreator";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useMicVAD } from "@ricky0123/vad-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import { MaximizedChat } from "./MaximizedChat";
 import { MinimizedChat } from "./MinimizedChat";
 import { NeedHelpButton } from "./NeedHelpButton";
 import { ChatMessage, ChatState, ErrorState, LoadingState } from "./types";
-import { useMicVAD } from "@ricky0123/vad-react";
 
 export function ChatWidget() {
   const [chatState, setChatState] = useState<ChatState>("closed");
@@ -30,7 +30,7 @@ export function ChatWidget() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const successMessages = [
-    "Looks like we got to the page you were looking for. Let me know if you need anything else!",
+    "Looks like we found what you were looking for. Let me know if you need anything else!",
     "Perfect! We've reached your destination. Need help with anything else?",
     "Mission accomplished! What else can I help you with?",
     "We made it! Feel free to ask me about anything else.",
@@ -46,25 +46,26 @@ export function ChatWidget() {
       const audioContext = new AudioContext({ sampleRate: 16000 });
       const audioBuffer = audioContext.createBuffer(1, audio.length, 16000);
       audioBuffer.getChannelData(0).set(audio);
-      
+
       // Create MediaRecorder to encode as WebM
       const mediaStream = audioContext.createMediaStreamDestination();
       const sourceNode = audioContext.createBufferSource();
       sourceNode.buffer = audioBuffer;
       sourceNode.connect(mediaStream);
-      
+
       const chunks: BlobPart[] = [];
       const recorder = new MediaRecorder(mediaStream.stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: "audio/webm;codecs=opus",
       });
-      
+
       recorder.ondataavailable = (e) => chunks.push(e.data);
-      
+
       const blob = await new Promise<Blob>((resolve) => {
-        recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/webm' }));
+        recorder.onstop = () =>
+          resolve(new Blob(chunks, { type: "audio/webm" }));
         sourceNode.start();
         recorder.start();
-        sourceNode.addEventListener('ended', () => recorder.stop());
+        sourceNode.addEventListener("ended", () => recorder.stop());
       });
       const reader = new FileReader();
 
@@ -122,7 +123,7 @@ export function ChatWidget() {
     onSpeechStart: () => {
       // Optional: Show some feedback that we detected speech starting
       console.log("Speech detected, listening...");
-    }
+    },
   });
 
   // Helper to show errors
@@ -188,7 +189,7 @@ export function ChatWidget() {
     try {
       setIsCallActive(true);
       setChatState("open");
-      console.log("vad starting")
+      console.log("vad starting");
       await vad.start();
     } catch (error) {
       console.error("Error starting call:", error);
@@ -349,7 +350,10 @@ export function ChatWidget() {
         const parsedGemini = parseGemini(data.result);
         console.log("parsedGemini: ", parsedGemini);
 
-        if (parsedGemini.taskAccomplished && parsedGemini.actions.length === 0) {
+        if (
+          parsedGemini.taskAccomplished &&
+          parsedGemini.actions.length === 0
+        ) {
           break;
         }
 
