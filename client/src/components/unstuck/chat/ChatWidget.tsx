@@ -1,18 +1,18 @@
 "use client";
 
+import { WorkflowCreator } from "@/components/WorkflowCreator";
 import { useUnstuck } from "@/contexts/UnstuckContext";
 import { parseGemini } from "@/lib/extract";
 import { getSitemap } from "@/utils/siteMetadata";
 import { useCallback, useState } from "react";
 import * as ReactDOM from "react-dom/client";
-import { WorkflowCreator } from "@/components/WorkflowCreator";
-import { ChatState, ChatMessage, ErrorState, LoadingState } from "./types";
-import { MinimizedChat } from "./MinimizedChat";
 import { MaximizedChat } from "./MaximizedChat";
+import { MinimizedChat } from "./MinimizedChat";
 import { NeedHelpButton } from "./NeedHelpButton";
+import { ChatMessage, ChatState, ErrorState, LoadingState } from "./types";
 
 export function ChatWidget() {
-  const [chatState, setChatState] = useState<ChatState>('closed');
+  const [chatState, setChatState] = useState<ChatState>("closed");
   const [isWorkflowActive, setIsWorkflowActive] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -22,11 +22,21 @@ export function ChatWidget() {
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const { getCurrentContext, setUserQuery } = useUnstuck();
 
+  const successMessages = [
+    "Looks like we got to the page you were looking for. Let me know if you need anything else!",
+    "Perfect! We've reached your destination. Need help with anything else?",
+    "Mission accomplished! What else can I help you with?",
+    "We made it! Feel free to ask me about anything else.",
+    "Success! Is there anything else you'd like to explore?",
+    "There we go! Don't hesitate to ask if you need more guidance.",
+    "All set! I'm here if you need any other assistance.",
+  ];
+
   // Helper to show errors
   const showError = (message: string) => {
     setError({
       message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
     // Clear error after 5 seconds
     setTimeout(() => setError(undefined), 5000);
@@ -59,7 +69,7 @@ export function ChatWidget() {
 
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
-      
+
       // Clean up the URL after playback
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
@@ -83,7 +93,7 @@ export function ChatWidget() {
     setChatMessages((prev) => [...prev, { role: "user", content: userQuery }]);
     setLoading({
       isLoading: true,
-      message: "Thinking..."
+      message: "Thinking...",
     });
 
     console.log("starting agent loop");
@@ -116,11 +126,18 @@ export function ChatWidget() {
         const data = await response.json();
         const parsedGemini = parseGemini(data.result);
 
-        const assistantMessage = parsedGemini.narration || parsedGemini.reasoning || "I'll help you with that.";
-        
+        if (parsedGemini.taskAccomplished) {
+          break;
+        }
+
+        const assistantMessage =
+          parsedGemini.narration ||
+          parsedGemini.reasoning ||
+          "I'll help you with that.";
+
         // Clear loading state before showing the message
         setLoading(undefined);
-        
+
         setChatMessages((prev) => [
           ...prev,
           {
@@ -135,16 +152,16 @@ export function ChatWidget() {
         if (parsedGemini.actions.length > 0) {
           const firstAction = parsedGemini.actions[0];
           setIsWorkflowActive(true);
-          setChatState('minimized');
+          setChatState("minimized");
 
           const workflowPromise = new Promise<void>((resolve) => {
-            const container = document.createElement('div');
+            const container = document.createElement("div");
             document.body.appendChild(container);
-            
+
             const root = ReactDOM.createRoot(container);
             root.render(
-              <WorkflowCreator 
-                elementId={firstAction} 
+              <WorkflowCreator
+                elementId={firstAction}
                 onComplete={() => {
                   // Defer cleanup to next frame to avoid React unmounting warning
                   requestAnimationFrame(() => {
@@ -159,7 +176,7 @@ export function ChatWidget() {
               />
             );
           });
-          
+
           await workflowPromise;
         }
 
@@ -171,18 +188,24 @@ export function ChatWidget() {
           // Only set loading state if we're continuing the loop
           setLoading({
             isLoading: true,
-            message: "Thinking..."
+            message: "Thinking...",
           });
         }
       }
-      
+
       setIsWorkflowActive(false);
-      setChatState('open');
+      setChatState("open");
+
+      const randomMessage =
+        successMessages[Math.floor(Math.random() * successMessages.length)];
+      await playTextToSpeech(randomMessage);
     } catch (error) {
       console.error("Error analyzing page:", error);
-      showError(error instanceof Error ? error.message : "An unexpected error occurred");
+      showError(
+        error instanceof Error ? error.message : "An unexpected error occurred"
+      );
       setIsWorkflowActive(false);
-      setChatState('open');
+      setChatState("open");
     } finally {
       setIsAnalyzing(false);
       setLoading(undefined);
@@ -199,14 +222,18 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-[999] pointer-events-none" id="chat-widget">
+    <div
+      className="fixed bottom-8 right-8 z-[999] pointer-events-none"
+      id="chat-widget"
+    >
       {/* Minimized view */}
       <div
         className={`
           transform transition-all duration-300 ease-out origin-bottom-right absolute bottom-0 right-0
-          ${chatState === 'minimized' 
-            ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' 
-            : 'translate-y-4 opacity-0 scale-95'
+          ${
+            chatState === "minimized"
+              ? "translate-y-0 opacity-100 scale-100 pointer-events-auto"
+              : "translate-y-4 opacity-0 scale-95"
           }
         `}
       >
@@ -215,7 +242,7 @@ export function ChatWidget() {
           latestMessage={chatMessages[chatMessages.length - 1]?.content}
           error={error}
           loading={loading}
-          onMaximize={() => setChatState('open')}
+          onMaximize={() => setChatState("open")}
         />
       </div>
 
@@ -223,9 +250,10 @@ export function ChatWidget() {
       <div
         className={`
           transform transition-all duration-300 ease-out origin-bottom-right absolute bottom-0 right-0
-          ${chatState !== 'minimized' 
-            ? 'translate-y-0 opacity-100 scale-100' 
-            : 'translate-y-4 opacity-0 scale-95'
+          ${
+            chatState !== "minimized"
+              ? "translate-y-0 opacity-100 scale-100"
+              : "translate-y-4 opacity-0 scale-95"
           }
         `}
       >
@@ -233,9 +261,10 @@ export function ChatWidget() {
         <div
           className={`
             transform transition-all duration-300 ease-out origin-bottom-right
-            ${chatState === 'open' 
-              ? 'scale-100 opacity-100 pointer-events-auto' 
-              : 'scale-95 opacity-0'
+            ${
+              chatState === "open"
+                ? "scale-100 opacity-100 pointer-events-auto"
+                : "scale-95 opacity-0"
             }
           `}
         >
@@ -249,8 +278,8 @@ export function ChatWidget() {
             onVoiceToggle={() => setIsVoiceEnabled(!isVoiceEnabled)}
             onInputChange={setInput}
             onSubmit={handleSubmit}
-            onMinimize={() => setChatState('minimized')}
-            onClose={() => setChatState('closed')}
+            onMinimize={() => setChatState("minimized")}
+            onClose={() => setChatState("closed")}
             onStartCall={startCall}
           />
         </div>
@@ -259,15 +288,16 @@ export function ChatWidget() {
         <div
           className={`
             transform transition-all duration-200 ease-out absolute bottom-0 right-0
-            ${chatState === 'closed' 
-              ? 'scale-100 opacity-100 pointer-events-auto' 
-              : 'scale-95 opacity-0'
+            ${
+              chatState === "closed"
+                ? "scale-100 opacity-100 pointer-events-auto"
+                : "scale-95 opacity-0"
             }
           `}
         >
-          <NeedHelpButton onClick={() => setChatState('open')} />
+          <NeedHelpButton onClick={() => setChatState("open")} />
         </div>
       </div>
     </div>
   );
-} 
+}
