@@ -57,7 +57,7 @@ export const MinimizedChat = ({
       </p>
       {isWorkflowActive && !error && !loading?.isLoading && (
         <div className="text-xs text-gray-400 animate-pulse flex items-center gap-1">
-          press <kbd className="px-1 py-0.5 bg-gray-100 rounded">enter</kbd> to
+          press <kbd className="px-1 py-0.5 bg-gray-100 rounded">tab</kbd> to
           continue
           <ArrowRight className="h-3 w-3" />
         </div>
