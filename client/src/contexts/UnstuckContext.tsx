@@ -6,7 +6,7 @@ interface InteractiveElement {
   id: string;
   label: string;
   type: string;
-  boundingBox?: DOMRect;
+  boundingBox: DOMRect;
 }
 
 interface UnstuckContextType {
@@ -91,14 +91,18 @@ function getParentContext(el: Element, depth = 2): string {
 
 function processNode(node: Element) {
   if (isInteractive(node)) {
-    const unstuckId = getDescriptiveId(node);
-    node.setAttribute("data-unstuck-id", unstuckId);
-    return {
-      id: unstuckId,
-      label: getElementLabel(node),
-      type: node.tagName.toLowerCase(),
-      boundingBox: node.getBoundingClientRect(),
-    };
+    const boundingBox = node.getBoundingClientRect();
+    // Only process nodes with valid bounding boxes
+    if (boundingBox && boundingBox.width > 0 && boundingBox.height > 0) {
+      const unstuckId = getDescriptiveId(node);
+      node.setAttribute("data-unstuck-id", unstuckId);
+      return {
+        id: unstuckId,
+        label: getElementLabel(node),
+        type: node.tagName.toLowerCase(),
+        boundingBox,
+      };
+    }
   }
   return null;
 }
@@ -119,7 +123,20 @@ export function UnstuckProvider({ children }: { children: React.ReactNode }) {
 
   const getContext = async () => {
     const domString = document.documentElement.outerHTML;
-    const screenshot = await takeScreenshot();
+    
+    // Filter out elements that don't have valid bounding boxes
+    const validInteractives = interactives.filter(el => 
+      el.boundingBox && 
+      el.boundingBox.width > 0 && 
+      el.boundingBox.height > 0
+    ).map(el => ({
+      boundingBox: el.boundingBox,
+      label: el.label,
+      id: el.id
+    }));
+    
+    const screenshot = await takeScreenshot(document.body, validInteractives);
+    
     return {
       interactiveElements: interactives,
       domString,
