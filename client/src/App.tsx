@@ -13,7 +13,7 @@ import NotFound from "./pages/NotFound";
 import PropertyDetails from "./pages/PropertyDetails";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
-
+import { WorkflowCreator } from "./components/WorkflowCreator";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -21,6 +21,7 @@ const App = () => (
     <TooltipProvider>
       <CurrencyProvider>
         <UnstuckProvider>
+          {/* <WorkflowCreator /> */}
           <div className="min-h-screen bg-background font-sans antialiased">
             <Toaster />
             <Sonner />

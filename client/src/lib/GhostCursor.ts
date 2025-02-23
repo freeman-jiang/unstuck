@@ -1,19 +1,8 @@
+import { useEffect } from 'react';
+
 interface Position {
   x: number;
   y: number;
-}
-
-interface BoundingBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface CursorTarget {
-  elementId: string;
-  instruction: string;
-  boundingBox: BoundingBox;
 }
 
 interface CursorOptions {
@@ -21,100 +10,136 @@ interface CursorOptions {
   size?: number;
   glowColor?: string;
   glowSize?: number;
-  clickDuration?: number;
   moveDuration?: number;
   easing?: (t: number) => number;
-  labelStyle?: Partial<CSSStyleDeclaration>;
+  debug?: boolean;
 }
 
 export class GhostCursor {
-  private cursor: HTMLElement;
-  private label: HTMLElement;
-  private highlightBox: HTMLElement;
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
   private animationFrame: number | null = null;
+  private currentPosition: Position = { x: 0, y: 0 };
+  private isAnimating = false;
   private options: Required<CursorOptions>;
+  private debug: boolean;
+  private isPulsing = false;
 
   constructor(options: CursorOptions = {}) {
+    this.debug = options.debug || false;
     this.options = {
-      color: options.color || 'rgba(75, 75, 255, 0.6)',
+      color: options.color || 'rgba(75, 75, 255, 0.8)',
       size: options.size || 20,
       glowColor: options.glowColor || 'rgba(75, 75, 255, 0.4)',
       glowSize: options.glowSize || 10,
-      clickDuration: options.clickDuration || 150,
       moveDuration: options.moveDuration || 500,
       easing: options.easing || ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
-      labelStyle: {
-        background: '#333',
-        color: 'white',
-        padding: '8px 12px',
-        borderRadius: '6px',
-        fontSize: '14px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-        maxWidth: '250px',
-        ...options.labelStyle
-      }
+      debug: this.debug
     };
 
-    // Create cursor element
-    this.cursor = document.createElement('div');
-    this.cursor.style.cssText = `
-      position: fixed;
-      width: ${this.options.size}px;
-      height: ${this.options.size}px;
-      background: ${this.options.color};
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 10000;
-      transform: translate(-50%, -50%);
-      transition: transform 0.1s ease;
-      box-shadow: 0 0 ${this.options.glowSize}px ${this.options.glowColor};
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    `;
+    this.initializeCanvas();
+  }
 
-    // Create instruction label
-    this.label = document.createElement('div');
-    this.label.style.cssText = `
-      position: fixed;
-      pointer-events: none;
-      z-index: 10001;
-      opacity: 0;
-      transform: translate(-50%, -100%) translateY(-20px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
-      ${Object.entries(this.options.labelStyle)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(';')}
-    `;
+  private initializeCanvas() {
+    // Create and configure the canvas element
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.canvas.style.position = 'fixed';
+    this.canvas.style.top = '0';
+    this.canvas.style.left = '0';
+    this.canvas.style.pointerEvents = 'none';
+    this.canvas.style.zIndex = '10000';
+    document.body.appendChild(this.canvas);
 
-    // Create highlight box
-    this.highlightBox = document.createElement('div');
-    this.highlightBox.style.cssText = `
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      border: 2px solid ${this.options.color};
-      border-radius: 4px;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      box-shadow: 0 0 0 4px ${this.options.glowColor};
-    `;
+    // Get the canvas context
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not get canvas context');
+    }
+    this.ctx = ctx;
 
-    document.body.appendChild(this.cursor);
-    document.body.appendChild(this.label);
-    document.body.appendChild(this.highlightBox);
-
-    requestAnimationFrame(() => {
-      this.cursor.style.opacity = '1';
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      this.drawCursor(this.currentPosition);
     });
+
+    if (this.debug) {
+      console.log('Canvas initialized:', {
+        width: this.canvas.width,
+        height: this.canvas.height,
+        position: this.currentPosition
+      });
+    }
+  }
+
+  private drawCursor(position: Position, pulseScale: number = 1, outerPulseScale: number = 1, opacity: number = 1) {
+    // Clear the previous frame
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw outer pulse ring with fading opacity
+    if (outerPulseScale > 0) {
+      this.ctx.beginPath();
+      this.ctx.arc(position.x, position.y, (this.options.size / 3) * outerPulseScale, 0, Math.PI * 2);
+      this.ctx.strokeStyle = this.options.color.replace(/[\d.]+\)$/, `${0.3 * opacity})`);
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
+
+    // Draw inner pulse ring with fading opacity
+    if (pulseScale > 0) {
+      this.ctx.beginPath();
+      this.ctx.arc(position.x, position.y, (this.options.size / 4) * pulseScale, 0, Math.PI * 2);
+      this.ctx.strokeStyle = this.options.color.replace(/[\d.]+\)$/, `${0.5 * opacity})`);
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
+
+    // Draw glow effect
+    const gradient = this.ctx.createRadialGradient(
+      position.x,
+      position.y,
+      0,
+      position.x,
+      position.y,
+      this.options.glowSize
+    );
+    gradient.addColorStop(0, this.options.glowColor);
+    gradient.addColorStop(1, 'rgba(75, 75, 255, 0)');
+
+    this.ctx.beginPath();
+    this.ctx.arc(position.x, position.y, this.options.glowSize, 0, Math.PI * 2);
+    this.ctx.fillStyle = gradient;
+    this.ctx.fill();
+
+    // Draw cursor center
+    this.ctx.beginPath();
+    this.ctx.arc(position.x, position.y, this.options.size / 4, 0, Math.PI * 2);
+    this.ctx.fillStyle = this.options.color;
+    this.ctx.fill();
+
+    if (this.debug) {
+      console.log('Drew cursor at:', position, 'with scales:', { pulseScale, outerPulseScale });
+    }
   }
 
   private async animate(
     start: Position,
     end: Position,
     duration: number,
-    onFrame: (x: number, y: number) => void
   ): Promise<void> {
+    if (this.isAnimating) {
+      if (this.debug) console.warn('Animation already in progress');
+      return;
+    }
+    
+    if (this.debug) {
+      console.log('Starting animation:', { start, end, duration });
+    }
+
+    this.isAnimating = true;
     const startTime = performance.now();
 
     return new Promise((resolve) => {
@@ -126,11 +151,21 @@ export class GhostCursor {
         const currentX = start.x + (end.x - start.x) * easeProgress;
         const currentY = start.y + (end.y - start.y) * easeProgress;
 
-        onFrame(currentX, currentY);
+        this.currentPosition = { x: currentX, y: currentY };
+        this.drawCursor(this.currentPosition);
+
+        if (this.debug) {
+          console.log('Animation frame:', {
+            progress,
+            position: this.currentPosition
+          });
+        }
 
         if (progress < 1) {
           this.animationFrame = requestAnimationFrame(tick);
         } else {
+          this.isAnimating = false;
+          if (this.debug) console.log('Animation complete');
           resolve();
         }
       };
@@ -139,97 +174,110 @@ export class GhostCursor {
     });
   }
 
-  private updateLabelPosition(x: number, y: number) {
-    this.label.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%) translateY(-20px)`;
+  private startPulseAnimation() {
+    if (this.isPulsing) return;
+    this.isPulsing = true;
+
+    const duration = 1400; // 1.4s like in the example
+    const startTime = performance.now();
+
+    // Track multiple pulse rings
+    const rings = [
+      { startTime: startTime, scale: 0 },
+      { startTime: startTime + duration / 2, scale: 0 } // Start second ring halfway through
+    ];
+
+    const animate = (currentTime: number) => {
+      if (!this.isPulsing) return;
+
+      // Clear canvas for new frame
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      // Update and draw each ring
+      rings.forEach((ring, index) => {
+        const elapsed = currentTime - ring.startTime;
+        const progress = (elapsed % duration) / duration;
+
+        // Calculate scale and opacity
+        const scale = progress * 1.5; // Reduced max scale from 2 to 1.5
+        const opacity = Math.max(0, 1 - progress); // Fade from 1 to 0
+
+        // Draw the ring
+        if (opacity > 0) {
+          this.drawCursor(this.currentPosition, index === 0 ? scale : 0, index === 1 ? scale : 0, opacity);
+        }
+
+        // Reset ring if cycle complete
+        if (progress >= 1) {
+          ring.startTime = currentTime;
+        }
+      });
+
+      // Draw the base cursor on top
+      this.drawCursor(this.currentPosition);
+
+      this.animationFrame = requestAnimationFrame(animate);
+    };
+
+    this.animationFrame = requestAnimationFrame(animate);
   }
 
-  private showInstruction(instruction: string, x: number, y: number) {
-    this.label.textContent = instruction;
-    this.updateLabelPosition(x, y);
-    this.label.style.opacity = '1';
+  private stopPulseAnimation() {
+    this.isPulsing = false;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    this.drawCursor(this.currentPosition, 1, 1);
   }
 
-  private hideInstruction() {
-    this.label.style.opacity = '0';
-  }
+  public async moveTo(targetX: number, targetY: number): Promise<void> {
+    this.stopPulseAnimation();
 
-  private showHighlightBox(box: BoundingBox) {
-    this.highlightBox.style.left = `${box.x}px`;
-    this.highlightBox.style.top = `${box.y}px`;
-    this.highlightBox.style.width = `${box.width}px`;
-    this.highlightBox.style.height = `${box.height}px`;
-    this.highlightBox.style.opacity = '1';
-  }
-
-  private hideHighlightBox() {
-    this.highlightBox.style.opacity = '0';
-  }
-
-  public async moveToTarget(target: CursorTarget): Promise<void> {
-    const centerX = target.boundingBox.x + target.boundingBox.width / 2;
-    const centerY = target.boundingBox.y + target.boundingBox.height / 2;
-
-    // Show instruction before moving
-    this.showInstruction(target.instruction, centerX, centerY);
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Move cursor
-    const rect = this.cursor.getBoundingClientRect();
-    const startX = rect.left + rect.width / 2;
-    const startY = rect.top + rect.height / 2;
-
-    // Show highlight box
-    this.showHighlightBox(target.boundingBox);
-
-    // Animate cursor movement
-    await this.animate(
-      { x: startX, y: startY },
-      { x: centerX, y: centerY },
-      this.options.moveDuration,
-      (x, y) => {
-        this.cursor.style.transform = `translate(${x}px, ${y}px)`;
-        this.updateLabelPosition(x, y);
-      }
-    );
-  }
-
-  public async click(): Promise<void> {
-    const clickDuration = this.options.clickDuration;
-    const originalTransform = this.cursor.style.transform;
-    
-    // Scale down with glow effect
-    this.cursor.style.transform = `${originalTransform} scale(0.8)`;
-    this.cursor.style.boxShadow = `0 0 ${this.options.glowSize * 2}px ${this.options.color}`;
-    await new Promise(resolve => setTimeout(resolve, clickDuration / 2));
-    
-    // Scale back up
-    this.cursor.style.transform = originalTransform;
-    this.cursor.style.boxShadow = `0 0 ${this.options.glowSize}px ${this.options.glowColor}`;
-    await new Promise(resolve => setTimeout(resolve, clickDuration / 2));
-  }
-
-  public async executeAction(target: CursorTarget): Promise<void> {
-    await this.moveToTarget(target);
-    await this.click();
-
-    // Trigger click on actual element
-    const element = document.getElementById(target.elementId);
-    if (element) {
-      element.click();
+    if (this.debug) {
+      console.log('Moving cursor:', {
+        from: this.currentPosition,
+        to: { x: targetX, y: targetY }
+      });
     }
 
-    // Hide instruction and highlight after action
-    await new Promise(resolve => setTimeout(resolve, 500));
-    this.hideInstruction();
-    this.hideHighlightBox();
+    await this.animate(
+      this.currentPosition,
+      { x: targetX, y: targetY },
+      this.options.moveDuration
+    );
+
+    // Start pulsing after reaching the target
+    this.startPulseAnimation();
+  }
+
+  public setPosition(x: number, y: number): void {
+    this.currentPosition = { x, y };
+    this.drawCursor(this.currentPosition);
+    
+    if (this.debug) {
+      console.log('Set cursor position:', { x, y });
+    }
+  }
+
+  public hide(): void {
+    this.stopPulseAnimation();
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  public show(): void {
+    this.drawCursor(this.currentPosition);
   }
 
   public destroy(): void {
+    this.stopPulseAnimation();
     if (this.animationFrame !== null) {
       cancelAnimationFrame(this.animationFrame);
     }
-    this.cursor.remove();
-    this.label.remove();
-    this.highlightBox.remove();
+    this.canvas.remove();
+
+    if (this.debug) {
+      console.log('Cursor destroyed');
+    }
   }
-} 
+}
