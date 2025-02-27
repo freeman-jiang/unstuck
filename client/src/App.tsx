@@ -22,7 +22,8 @@ const App = () => (
         <UnstuckProvider
           config={{
             apiKey: "test-api-key",
-            serverUrl: "https://server.getunstuck.workers.dev",
+            // serverUrl: "https://server.getunstuck.workers.dev",
+            serverUrl: "http://localhost:8787",
           }}
         >
           {/* <WorkflowCreator /> */}
